@@ -16,6 +16,11 @@ const SESION = {
   csrfToken: 'token-uno',
 }
 
+const EMPRESAS = [
+  { codigo: 'EMP-PRUEBA', nombre: 'Empresa de prueba' },
+  { codigo: 'EMP-OTRA', nombre: 'Otra empresa de prueba' },
+]
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { 'Content-Type': 'application/json' } })
 }
@@ -27,8 +32,15 @@ interface Llamada {
   cuerpo: unknown
 }
 
-/** `conSesion`: lo que responde GET /auth/me al abrir la página. */
-function apiSimulada(opciones: { conSesion?: boolean; login?: () => Response } = {}) {
+interface Opciones {
+  /** Lo que responde GET /auth/me al abrir la página. */
+  conSesion?: boolean
+  login?: () => Response
+  /** Respuesta de GET /auth/empresas; por defecto, dos empresas. */
+  empresas?: () => Response
+}
+
+function apiSimulada(opciones: Opciones = {}) {
   const llamadas: Llamada[] = []
   let sesionVigente = opciones.conSesion ?? false
   const falso = vi.fn(async (entrada: RequestInfo | URL, init: RequestInit = {}) => {
@@ -40,6 +52,7 @@ function apiSimulada(opciones: { conSesion?: boolean; login?: () => Response } =
       cuerpo: init.body ? JSON.parse(String(init.body)) : undefined,
     })
     if (url === '/api/auth/me') return sesionVigente ? json(SESION) : json({ detail: 'Sin sesión.' }, 401)
+    if (url === '/api/auth/empresas') return opciones.empresas?.() ?? json(EMPRESAS)
     if (url === '/api/auth/login') {
       const respuesta = opciones.login?.() ?? json(SESION)
       if (respuesta.ok) sesionVigente = true
@@ -56,8 +69,17 @@ function apiSimulada(opciones: { conSesion?: boolean; login?: () => Response } =
   return { llamadas, falso, cerrarSesionEnServidor: () => (sesionVigente = false) }
 }
 
-async function llenar(usuario: ReturnType<typeof userEvent.setup>, codigo: string, nombre: string, clave: string) {
-  if (codigo) await usuario.type(screen.getByLabelText(/Código de empresa/), codigo)
+type Usuario = ReturnType<typeof userEvent.setup>
+
+/** Espera a que la lista de empresas esté cargada y devuelve el selector. */
+async function selectorDeEmpresa() {
+  const selector = screen.getByLabelText(/^Empresa/)
+  await waitFor(() => expect(selector).toBeEnabled())
+  return selector
+}
+
+async function llenar(usuario: Usuario, codigo: string, nombre: string, clave: string) {
+  if (codigo) await usuario.selectOptions(await selectorDeEmpresa(), codigo)
   if (nombre) await usuario.type(screen.getByLabelText(/^Usuario/), nombre)
   if (clave) await usuario.type(screen.getByLabelText(/^Contraseña/), clave)
 }
@@ -74,8 +96,91 @@ describe('Pantalla de entrada', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument()
-    expect(screen.getByLabelText(/Código de empresa/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Empresa/)).toBeInTheDocument()
     expect(screen.queryByText('Costos directos')).not.toBeInTheDocument()
+  })
+
+  it('carga las empresas en el selector: nombre a la vista, marcador al inicio, nada elegido', async () => {
+    const { llamadas } = apiSimulada()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    const selector = await selectorDeEmpresa()
+
+    expect(llamadas.some((l) => l.url === '/api/auth/empresas' && l.metodo === 'GET')).toBe(true)
+    expect(screen.getByRole('option', { name: 'Seleccione la empresa' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Empresa de prueba' })).toHaveValue('EMP-PRUEBA')
+    expect(screen.getByRole('option', { name: 'Otra empresa de prueba' })).toHaveValue('EMP-OTRA')
+    expect(selector).toHaveValue('')
+  })
+
+  it('mientras carga la lista, el selector está deshabilitado y dice «Cargando empresas…»', async () => {
+    apiSimulada({ empresas: () => new Response(null, { status: 500 }) })
+    let liberar: (r: Response) => void = () => undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (entrada: RequestInfo | URL) => {
+        const url = String(entrada)
+        if (url === '/api/auth/me') return json({ detail: 'Sin sesión.' }, 401)
+        return new Promise<Response>((resolver) => {
+          liberar = resolver
+        })
+      }),
+    )
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
+    expect(screen.getByRole('option', { name: 'Cargando empresas…' })).toBeInTheDocument()
+
+    liberar(json(EMPRESAS))
+    await waitFor(() => expect(screen.getByLabelText(/^Empresa/)).toBeEnabled())
+  })
+
+  it('con una sola empresa, queda preseleccionada', async () => {
+    apiSimulada({ empresas: () => json([EMPRESAS[0]]) })
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    const selector = await selectorDeEmpresa()
+
+    await waitFor(() => expect(selector).toHaveValue('EMP-PRUEBA'))
+  })
+
+  it('si la lista falla, muestra el aviso de la API y «Reintentar» la vuelve a pedir', async () => {
+    let intentos = 0
+    const { llamadas } = apiSimulada({
+      empresas: () => (++intentos === 1 ? json({ detail: 'Servicio no disponible.' }, 503) : json(EMPRESAS)),
+    })
+    const usuario = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Servicio no disponible.')
+    expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
+
+    await usuario.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    await waitFor(() => expect(screen.getByLabelText(/^Empresa/)).toBeEnabled())
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument()
+    expect(llamadas.filter((l) => l.url === '/api/auth/empresas')).toHaveLength(2)
+  })
+
+  it('si la lista falla sin detalle, usa el mensaje de respaldo', async () => {
+    apiSimulada({ empresas: () => new Response('no es json', { status: 500 }) })
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/La API respondió 500|No se pudieron cargar las empresas/)
+  })
+
+  it('si no hay empresas, lo dice y deja el selector deshabilitado', async () => {
+    apiSimulada({ empresas: () => json([]) })
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+
+    expect(await screen.findByText('No hay empresas disponibles.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
   })
 
   it('la contraseña tiene autocompletado de contraseña actual y se puede mostrar y ocultar', async () => {
@@ -94,19 +199,38 @@ describe('Pantalla de entrada', () => {
     expect(campo).toHaveAttribute('type', 'password')
   })
 
-  it('exige los tres campos, no llama a la API y lleva el foco al primero con error', async () => {
+  it('exige empresa, usuario y contraseña, no llama a la API y lleva el foco a la empresa', async () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
     await screen.findByRole('heading', { name: 'Ingresar' })
+    await selectorDeEmpresa()
 
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
 
-    expect(await screen.findByText('Escriba el código de la empresa.')).toBeInTheDocument()
+    expect(await screen.findByText('Seleccione la empresa.')).toBeInTheDocument()
     expect(screen.getByText('Escriba su usuario.')).toBeInTheDocument()
     expect(screen.getByText('Escriba su contraseña.')).toBeInTheDocument()
-    expect(screen.getByLabelText(/Código de empresa/)).toHaveFocus()
+    expect(screen.getByLabelText(/^Empresa/)).toHaveFocus()
     expect(llamadas.some((l) => l.url === '/api/auth/login')).toBe(false)
+  })
+
+  it('la empresa es obligatoria aunque usuario y contraseña estén bien', async () => {
+    const { llamadas } = apiSimulada()
+    const usuario = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+    await selectorDeEmpresa()
+
+    await llenar(usuario, '', 'ana', 'clave-de-mentira')
+    await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
+
+    expect(await screen.findByText('Seleccione la empresa.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Empresa/)).toHaveFocus()
+    expect(llamadas.some((l) => l.url === '/api/auth/login')).toBe(false)
+
+    await usuario.selectOptions(screen.getByLabelText(/^Empresa/), 'EMP-OTRA')
+    expect(screen.queryByText('Seleccione la empresa.')).not.toBeInTheDocument()
   })
 
   it('pide al menos 6 caracteres de contraseña', async () => {
@@ -123,24 +247,24 @@ describe('Pantalla de entrada', () => {
     expect(llamadas.some((l) => l.url === '/api/auth/login')).toBe(false)
   })
 
-  it('envía el código en mayúsculas y sin espacios, entra y muestra empresa y usuario', async () => {
+  it('envía el código de la empresa elegida (no su nombre), entra y muestra empresa y usuario', async () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
     await screen.findByRole('heading', { name: 'Ingresar' })
 
-    await llenar(usuario, '  emp-prueba ', ' ana ', 'clave-de-mentira')
+    await llenar(usuario, 'EMP-OTRA', ' ana ', 'clave-de-mentira')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
 
     await screen.findByText('Empresa de prueba')
     expect(screen.getByText('Ana de prueba')).toBeInTheDocument()
     const login = llamadas.find((l) => l.url === '/api/auth/login')
     expect(login?.metodo).toBe('POST')
-    expect(login?.cuerpo).toEqual({ codigo: 'EMP-PRUEBA', usuario: 'ana', password: 'clave-de-mentira' })
+    expect(login?.cuerpo).toEqual({ codigo: 'EMP-OTRA', usuario: 'ana', password: 'clave-de-mentira' })
     expect(csrfActual()).toBe('token-uno')
   })
 
-  it('muestra el error de la API, borra la contraseña y deja el foco en ella', async () => {
+  it('muestra el error de la API, borra la contraseña, deja el foco en ella y conserva la empresa', async () => {
     apiSimulada({ login: () => json({ detail: 'Empresa, usuario o contraseña incorrectos.' }, 401) })
     const usuario = userEvent.setup()
     render(<App />)
@@ -153,7 +277,7 @@ describe('Pantalla de entrada', () => {
     expect(alerta).toHaveTextContent('Empresa, usuario o contraseña incorrectos.')
     expect(screen.getByLabelText(/^Contraseña/)).toHaveValue('')
     expect(screen.getByLabelText(/^Contraseña/)).toHaveFocus()
-    expect(screen.getByLabelText(/Código de empresa/)).toHaveValue('EMP-PRUEBA')
+    expect(screen.getByLabelText(/^Empresa/)).toHaveValue('EMP-PRUEBA')
   })
 
   it('muestra el aviso de espera cuando la API limita los intentos (429)', async () => {
@@ -166,6 +290,15 @@ describe('Pantalla de entrada', () => {
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Espere 5 minutos')
+  })
+
+  it('no queda ningún texto que pida escribir el código de la empresa', async () => {
+    apiSimulada()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar' })
+    await selectorDeEmpresa()
+
+    expect(screen.queryByText(/código/i)).not.toBeInTheDocument()
   })
 })
 
@@ -206,7 +339,12 @@ describe('Sesión', () => {
     await screen.findByText('Empresa de prueba')
 
     cerrarSesionEnServidor()
-    vi.stubGlobal('fetch', vi.fn(async () => json({ detail: 'Sin sesión.' }, 401)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (entrada: RequestInfo | URL) =>
+        String(entrada) === '/api/auth/empresas' ? json(EMPRESAS) : json({ detail: 'Sin sesión.' }, 401),
+      ),
+    )
     await expect(api.listar()).rejects.toThrow()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Su sesión terminó. Ingrese de nuevo.')

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
   Button,
@@ -6,7 +6,9 @@ import {
   FluentProvider,
   Input,
   MessageBar,
+  MessageBarActions,
   MessageBarBody,
+  Select,
   Spinner,
   Subtitle2,
   Text,
@@ -16,6 +18,8 @@ import {
   webDarkTheme,
 } from '@fluentui/react-components'
 import { useSesion } from './contextoSesion'
+import { servicioAuth } from './servicioAuth'
+import type { Empresa } from './tipos'
 
 const estilos = makeStyles({
   fondo: {
@@ -63,16 +67,21 @@ const estilos = makeStyles({
 })
 
 interface Errores {
-  codigo?: string
+  empresa?: string
   usuario?: string
   password?: string
 }
+
+type CargaEmpresas =
+  | { estado: 'cargando' }
+  | { estado: 'lista'; empresas: Empresa[] }
+  | { estado: 'error'; mensaje: string }
 
 const MINIMO_CONTRASENA = 6
 
 function validar(codigo: string, usuario: string, password: string): Errores {
   const errores: Errores = {}
-  if (!codigo) errores.codigo = 'Escriba el código de la empresa.'
+  if (!codigo) errores.empresa = 'Seleccione la empresa.'
   if (!usuario) errores.usuario = 'Escriba su usuario.'
   if (!password) errores.password = 'Escriba su contraseña.'
   else if (password.length < MINIMO_CONTRASENA) {
@@ -92,12 +101,13 @@ function IconoOjo({ tachado }: { tachado: boolean }): ReactNode {
 }
 
 /**
- * Pantalla de entrada: código de empresa, usuario y contraseña. El código se escribe; no hay lista de
- * empresas, para no revelar quiénes son clientes. La contraseña nunca se guarda ni se muestra en avisos.
+ * Pantalla de entrada: empresa (de una lista), usuario y contraseña. La lista de empresas es pública y
+ * solo trae nombre y código; el código es lo que se envía. La contraseña nunca se guarda ni se muestra en avisos.
  */
 export function PantallaEntrada() {
   const e = estilos()
   const { entrar, aviso } = useSesion()
+  const [carga, setCarga] = useState<CargaEmpresas>({ estado: 'cargando' })
   const [codigo, setCodigo] = useState('')
   const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
@@ -106,10 +116,37 @@ export function PantallaEntrada() {
   const [enviando, setEnviando] = useState(false)
   const [errorApi, setErrorApi] = useState<string | null>(null)
 
-  const refCodigo = useRef<HTMLInputElement>(null)
+  const refEmpresa = useRef<HTMLSelectElement>(null)
   const refUsuario = useRef<HTMLInputElement>(null)
   const refPassword = useRef<HTMLInputElement>(null)
 
+  // El estado inicial ya es «cargando»; el reintento lo vuelve a poner desde el botón, no desde el efecto.
+  const pedirEmpresas = useCallback(() => {
+    return servicioAuth
+      .empresas()
+      .then((empresas) => {
+        setCarga({ estado: 'lista', empresas })
+        // Con una sola empresa no hay nada que elegir: queda seleccionada.
+        if (empresas.length === 1) setCodigo(empresas[0].codigo)
+      })
+      .catch((ex: unknown) => {
+        setCarga({
+          estado: 'error',
+          mensaje: ex instanceof Error && ex.message ? ex.message : 'No se pudieron cargar las empresas.',
+        })
+      })
+  }, [])
+
+  useEffect(() => {
+    void pedirEmpresas()
+  }, [pedirEmpresas])
+
+  function reintentar() {
+    setCarga({ estado: 'cargando' })
+    void pedirEmpresas()
+  }
+
+  const empresas = carga.estado === 'lista' ? carga.empresas : []
   const mensaje = errorApi ?? aviso
 
   // Los errores de campo se calculan solo al enviar y se quitan al corregir ese campo.
@@ -123,16 +160,16 @@ export function PantallaEntrada() {
     if (enviando) return
     setErrorApi(null)
 
-    const limpio = { codigo: codigo.trim(), usuario: usuario.trim() }
-    const fallos = validar(limpio.codigo, limpio.usuario, password)
+    const nombreUsuario = usuario.trim()
+    const fallos = validar(codigo, nombreUsuario, password)
     setErrores(fallos)
-    if (fallos.codigo) return void refCodigo.current?.focus()
+    if (fallos.empresa) return void refEmpresa.current?.focus()
     if (fallos.usuario) return void refUsuario.current?.focus()
     if (fallos.password) return void refPassword.current?.focus()
 
     setEnviando(true)
     try {
-      await entrar({ ...limpio, password })
+      await entrar({ codigo, usuario: nombreUsuario, password })
     } catch (ex) {
       setErrorApi(ex instanceof Error ? ex.message : 'No se pudo ingresar. Intente de nuevo.')
       setPassword('')
@@ -167,25 +204,49 @@ export function PantallaEntrada() {
               </div>
             ) : null}
 
+            {carga.estado === 'error' ? (
+              <div role="alert">
+                <MessageBar intent="error">
+                  <MessageBarBody>{carga.mensaje}</MessageBarBody>
+                  <MessageBarActions>
+                    <Button type="button" size="small" onClick={reintentar}>
+                      Reintentar
+                    </Button>
+                  </MessageBarActions>
+                </MessageBar>
+              </div>
+            ) : null}
+
+            {carga.estado === 'lista' && empresas.length === 0 ? (
+              <div role="alert">
+                <MessageBar intent="warning">
+                  <MessageBarBody>No hay empresas disponibles.</MessageBarBody>
+                </MessageBar>
+              </div>
+            ) : null}
+
             <Field
-              label="Código de empresa"
+              label="Empresa"
               required
-              hint="El código que le dio su empresa."
-              validationState={errores.codigo ? 'error' : 'none'}
-              validationMessage={errores.codigo}
+              validationState={errores.empresa ? 'error' : 'none'}
+              validationMessage={errores.empresa}
             >
-              <Input
-                ref={refCodigo}
+              <Select
+                ref={refEmpresa}
                 value={codigo}
+                disabled={carga.estado !== 'lista' || empresas.length === 0}
                 onChange={(_, d) => {
-                  setCodigo(d.value.toUpperCase())
-                  corregir('codigo')
+                  setCodigo(d.value)
+                  corregir('empresa')
                 }}
-                autoComplete="organization"
-                autoCapitalize="characters"
-                spellCheck={false}
-                autoFocus
-              />
+              >
+                <option value="">{carga.estado === 'cargando' ? 'Cargando empresas…' : 'Seleccione la empresa'}</option>
+                {empresas.map((empresa) => (
+                  <option key={empresa.codigo} value={empresa.codigo}>
+                    {empresa.nombre}
+                  </option>
+                ))}
+              </Select>
             </Field>
 
             <Field
@@ -248,7 +309,7 @@ export function PantallaEntrada() {
             </Button>
 
             <Text size={200} className={e.pie}>
-              ¿No recuerda el código o la contraseña? Pídalos al administrador de su empresa.
+              ¿No recuerda su usuario o contraseña? Pídalos al administrador de su empresa.
             </Text>
           </form>
         </section>

@@ -1,5 +1,5 @@
 import { csrfActual } from './enlace'
-import type { CredencialesEntrada, RespuestaSesion } from './tipos'
+import type { CredencialesEntrada, Empresa, RespuestaSesion } from './tipos'
 
 /**
  * Llamadas de acceso. Van aparte de `api/cliente.ts` a propósito: un 401 en el inicio de sesión
@@ -38,6 +38,13 @@ async function pedirAcceso(ruta: string, init: RequestInit): Promise<Response> {
 }
 
 export const servicioAuth = {
+  /** Empresas activas para elegir antes de entrar. Es pública (no necesita sesión) y no trae ids internos. */
+  async empresas(): Promise<Empresa[]> {
+    const respuesta = await pedirAcceso('/auth/empresas', { method: 'GET' })
+    if (!respuesta.ok) throw new ErrorDeAcceso(await leerError(respuesta), respuesta.status)
+    return (await respuesta.json()) as Empresa[]
+  },
+
   async entrar(credenciales: CredencialesEntrada): Promise<RespuestaSesion> {
     const respuesta = await pedirAcceso('/auth/login', { method: 'POST', body: JSON.stringify(credenciales) })
     if (!respuesta.ok) throw new ErrorDeAcceso(await leerError(respuesta), respuesta.status)
