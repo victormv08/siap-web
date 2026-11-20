@@ -23,6 +23,9 @@ import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
 import { PanelApu } from './vistas/PanelApu'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
 import { MedidorCantidades } from './vistas/MedidorCantidades'
+import { ProveedorSesion } from './auth/ProveedorSesion'
+import { GuardianSesion } from './auth/GuardianSesion'
+import { useSesion } from './auth/contextoSesion'
 import { DialogoCapitulo } from './vistas/DialogoCapitulo'
 import { DialogoItem } from './vistas/DialogoItem'
 import { Cantidades } from './vistas/Cantidades'
@@ -110,7 +113,8 @@ interface Accion {
   motivo?: string
 }
 
-function App() {
+function AplicacionPresupuestos() {
+  const { datos: sesion, salir } = useSesion()
   const [, setLista] = useState<ResumenPresupuesto[]>([])
   const [presupuesto, setPresupuesto] = useState<Presupuesto | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -306,7 +310,11 @@ function App() {
           <span className="siap-marca">SIAP</span>
           <span className="siap-nombre-programa">Sistema Integral de Análisis de Precios</span>
           <span className="derecha">
-            <b>Innovatek S.A.S.</b>
+            <b>{sesion?.empresa.nombre}</b>
+            <span>{sesion?.usuario.nombre}</span>
+            <button type="button" className="siap-salir" onClick={() => void salir()}>
+              Salir
+            </button>
           </span>
         </header>
 
@@ -705,6 +713,17 @@ function App() {
         />
       </div>
     </FluentProvider>
+  )
+}
+
+/** Raíz: sin sesión muestra la pantalla de entrada; con sesión, la aplicación de presupuestos. */
+function App() {
+  return (
+    <ProveedorSesion>
+      <GuardianSesion>
+        <AplicacionPresupuestos />
+      </GuardianSesion>
+    </ProveedorSesion>
   )
 }
 

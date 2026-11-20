@@ -161,6 +161,26 @@ select {
   font-weight: 700;
 }
 
+.siap-titulo .derecha .siap-salir {
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid var(--yel);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--yel);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.siap-titulo .derecha .siap-salir:hover {
+  background: var(--menu-hover);
+}
+
+.siap-titulo .derecha .siap-salir:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .siap-menu {
   display: flex;
   align-items: center;

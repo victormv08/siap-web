@@ -3,8 +3,9 @@
  * por el núcleo de la API, con su explicación. Aquí solo se transporta y se muestra.
  * Las rutas van con el prefijo /api, que Vite reenvía a la API (vite.config.ts).
  */
+import { csrfActual, sesionTerminada } from '../auth/enlace'
 
-export type TipoLinea = 'Material' | 'ManoDeObra' | 'Equipo' | 'Transporte' | 'Otro'
+export type TipoLinea ='Material' | 'ManoDeObra' | 'Equipo' | 'Transporte' | 'Otro'
 
 export interface ItemResultado {
   codigo: string
@@ -210,10 +211,13 @@ export interface ActualizarItemSolicitud {
 }
 
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
+  // Los cambios (POST, PUT...) llevan el token CSRF de la sesión; las lecturas no lo necesitan.
+  const csrf = (init?.method ?? 'GET').toUpperCase() === 'GET' ? null : csrfActual()
   const respuesta = await fetch(`/api${ruta}`, {
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
     ...init,
   })
+  if (respuesta.status === 401) sesionTerminada() // la sesión venció: la web vuelve a la pantalla de entrada
   if (!respuesta.ok) {
     // La API responde con «problem details» en español (RFC 9457): mostramos su detalle.
     let mensaje = `La API respondió ${respuesta.status}.`

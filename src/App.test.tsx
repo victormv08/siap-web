@@ -85,6 +85,14 @@ function apiSimulada(tras?: (url: string, init: RequestInit) => Response | undef
     const personalizada = tras?.(url, init)
     if (personalizada) return personalizada
 
+    // Hay una sesión vigente: estas pruebas son de la aplicación, no de la pantalla de entrada.
+    if (url === '/api/auth/me') {
+      return respuestaJson({
+        empresa: { codigo: 'EMP-PRUEBA', nombre: 'Empresa de prueba' },
+        usuario: { usuario: 'ana', nombre: 'Ana de prueba' },
+        csrfToken: 'token-de-prueba',
+      })
+    }
     if (url === '/api/presupuestos') return respuestaJson([{ id: 'P-0001', nombre: 'Obra de prueba', costoDirecto: 500000, total: 575000 }])
     if (url === '/api/presupuestos/P-0001') return respuestaJson(presupuesto())
     if (url.startsWith('/api/analisis/')) {
