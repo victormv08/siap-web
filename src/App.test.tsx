@@ -172,8 +172,9 @@ describe('SIAP web', () => {
     render(<App />)
 
     await screen.findByText('Obra de prueba')
-    const filaItem = screen.getByRole('row', { name: /Localización y replanteo/ })
-    await usuario.click(within(filaItem).getByRole('button', { name: 'Excluir' }))
+    // Se selecciona el ítem y se excluye desde la barra de herramientas, como en la maqueta.
+    await usuario.click(screen.getByRole('row', { name: /Localización y replanteo/ }))
+    await usuario.click(screen.getByRole('button', { name: 'Excluir' }))
 
     const dialogo = await screen.findByRole('dialog')
     const confirmar = within(dialogo).getByRole('button', { name: 'Excluir' })
@@ -189,7 +190,8 @@ describe('SIAP web', () => {
     render(<App />)
 
     await screen.findByText('Obra de prueba')
-    await usuario.click(screen.getByRole('tab', { name: 'Cantidades' }))
+    await usuario.click(screen.getByRole('button', { name: 'Hojas' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Cantidades' }))
 
     expect(screen.getByText('Esta hoja todavía no está conectada a la API.')).toBeInTheDocument()
   })
@@ -200,7 +202,7 @@ describe('SIAP web', () => {
     render(<App />)
 
     await screen.findByText('Obra de prueba')
-    await usuario.click(screen.getByRole('tab', { name: 'Datos generales · AIU' }))
+    await usuario.click(screen.getByRole('button', { name: 'AIU e IVA' }))
 
     const administracion = screen.getByRole('textbox', { name: /Administración/ })
     await usuario.clear(administracion)
