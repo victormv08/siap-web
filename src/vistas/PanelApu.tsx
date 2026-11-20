@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  Button,
   Spinner,
   Table,
   TableBody,
@@ -12,7 +13,8 @@ import {
   tokens,
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
-import type { Analisis, TipoLinea } from '../api/cliente'
+import type { AnalisisEditable, Presupuesto, TipoLinea } from '../api/cliente'
+import { DialogoEditarApu } from './DialogoEditarApu'
 import { decimales, pesos } from '../formato'
 
 const estilos = makeStyles({
@@ -38,21 +40,24 @@ const TIPOS: Record<TipoLinea, string> = {
 }
 
 interface Props {
+  presupuestoId: string
   codigoAnalisis: string
   codigoItem: string
+  onGuardado: (presupuesto: Presupuesto) => void
 }
 
-/** Análisis de precio unitario del ítem seleccionado. Solo lectura: el análisis lo entrega la API. */
-export function PanelApu({ codigoAnalisis, codigoItem }: Props) {
+/** Análisis de precio unitario del ítem, tal como lo ve este presupuesto. Se puede editar aquí mismo. */
+export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado }: Props) {
   const e = estilos()
-  const [analisis, setAnalisis] = useState<Analisis | null>(null)
+  const [analisis, setAnalisis] = useState<AnalisisEditable | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [editando, setEditando] = useState(false)
 
   // El panel se remonta por clave (codigoAnalisis) al cambiar de ítem: aquí solo se escribe tras la respuesta.
   useEffect(() => {
     let vigente = true
     api
-      .analisis(codigoAnalisis)
+      .analisisDelPresupuesto(presupuestoId, codigoAnalisis)
       .then((respuesta) => {
         if (vigente) setAnalisis(respuesta)
       })
@@ -62,7 +67,7 @@ export function PanelApu({ codigoAnalisis, codigoItem }: Props) {
     return () => {
       vigente = false
     }
-  }, [codigoAnalisis])
+  }, [presupuestoId, codigoAnalisis])
 
   return (
     <section className={e.panel} aria-label={`Análisis de precio del ítem ${codigoItem}`}>
@@ -70,6 +75,9 @@ export function PanelApu({ codigoAnalisis, codigoItem }: Props) {
         <Text weight="semibold">APU {codigoAnalisis}</Text>
         {analisis && <Text>{analisis.descripcion} · por {analisis.unidad}</Text>}
         {analisis && <Text className={e.pie}>Costo directo $ {pesos(analisis.costoDirecto)}</Text>}
+        <Button size="small" appearance="outline" onClick={() => setEditando(true)}>
+          Editar APU
+        </Button>
       </div>
       {error && <Text role="alert">{error}</Text>}
       {!analisis && !error && <Spinner size="tiny" label="Cargando análisis…" />}
@@ -96,6 +104,14 @@ export function PanelApu({ codigoAnalisis, codigoItem }: Props) {
             ))}
           </TableBody>
         </Table>
+      )}
+      {editando && (
+        <DialogoEditarApu
+          presupuestoId={presupuestoId}
+          codigoAnalisis={codigoAnalisis}
+          onCerrar={() => setEditando(false)}
+          onGuardado={onGuardado}
+        />
       )}
     </section>
   )

@@ -7,6 +7,7 @@ interface Props {
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
+  onAbrirMedidor: (codigo: string) => void
   bloqueado: boolean
 }
 
@@ -19,7 +20,7 @@ function leerCantidad(texto: string): number | null {
 }
 
 /** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
-export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, bloqueado }: Props) {
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, bloqueado }: Props) {
   return (
     <table className="g" aria-label="Ítems del presupuesto">
       <thead>
@@ -41,6 +42,7 @@ export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarIte
             itemSeleccionado={itemSeleccionado}
             onSeleccionarItem={onSeleccionarItem}
             onCambiarCantidad={onCambiarCantidad}
+            onAbrirMedidor={onAbrirMedidor}
             bloqueado={bloqueado}
           />
         ))}
@@ -63,10 +65,11 @@ interface FilasProps {
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
+  onAbrirMedidor: (codigo: string) => void
   bloqueado: boolean
 }
 
-function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, bloqueado }: FilasProps) {
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, bloqueado }: FilasProps) {
   return (
     <>
       <tr className="cap" id={`capitulo-${capitulo.codigo}`}>
@@ -83,6 +86,7 @@ function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, 
           codigo={`${indice + 1}.${ii + 1}`}
           item={item}
           seleccionado={itemSeleccionado === item.codigo}
+          onAbrirMedidor={() => onAbrirMedidor(item.codigo)}
           onSeleccionar={() => onSeleccionarItem(item.codigo)}
           onCambiarCantidad={(cantidad) => onCambiarCantidad(item, cantidad)}
           bloqueado={bloqueado}
@@ -105,11 +109,12 @@ interface FilaProps {
   item: ItemResultado
   seleccionado: boolean
   onSeleccionar: () => void
+  onAbrirMedidor: () => void
   onCambiarCantidad: (cantidad: number) => Promise<void>
   bloqueado: boolean
 }
 
-function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, bloqueado }: FilaProps) {
+function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, onAbrirMedidor, bloqueado }: FilaProps) {
   const [borrador, setBorrador] = useState<string | null>(null)
   const valorMostrado = borrador ?? decimales(item.cantidad)
 
@@ -124,7 +129,7 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad
   const clases = [item.excluido ? 'excl' : '', seleccionado ? 'seleccionada' : ''].filter(Boolean).join(' ')
 
   return (
-    <tr className={clases} onClick={onSeleccionar} aria-selected={seleccionado}>
+    <tr className={clases} onClick={onSeleccionar} onDoubleClick={onAbrirMedidor} aria-selected={seleccionado} title="Doble clic: medidor de cantidades">
       <td>{codigo}</td>
       <td className="desc">
         {item.descripcion}
@@ -142,6 +147,7 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad
           value={valorMostrado}
           disabled={bloqueado || item.excluido}
           onClick={(evento) => evento.stopPropagation()}
+          onDoubleClick={(evento) => evento.stopPropagation()}
           onChange={(evento) => setBorrador(evento.target.value)}
           onBlur={() => void confirmar()}
           onKeyDown={(evento) => {

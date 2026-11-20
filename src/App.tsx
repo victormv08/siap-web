@@ -22,6 +22,11 @@ import { CostosDirectos } from './vistas/CostosDirectos'
 import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
 import { PanelApu } from './vistas/PanelApu'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
+import { MedidorCantidades } from './vistas/MedidorCantidades'
+import { DialogoCapitulo } from './vistas/DialogoCapitulo'
+import { DialogoItem } from './vistas/DialogoItem'
+import { Cantidades } from './vistas/Cantidades'
+import { FormularioPreciosVista, HistorialVista, ResumenDesagregadoVista } from './vistas/Reportes'
 import { HojaPendiente } from './vistas/HojaPendiente'
 import './estilos.css'
 
@@ -43,11 +48,6 @@ const HOJAS: [Hoja, string, JSX.Element][] = [
 
 /** Por qué cada hoja aún no tiene datos de la API. Sin cifras inventadas. */
 const PENDIENTES: Partial<Record<Hoja, { nombre: string; motivo: string }>> = {
-  cant: {
-    nombre: 'Cantidades',
-    motivo:
-      'La memoria de cálculo (generador de cantidades) necesita su propio recurso en la API y la regla de la tabla de acero (R-017).',
-  },
   apu: {
     nombre: 'APU',
     motivo:
@@ -58,21 +58,9 @@ const PENDIENTES: Partial<Record<Hoja, { nombre: string; motivo: string }>> = {
     motivo:
       'El catálogo de insumos y su historial de precios dependen de la decisión sobre el catálogo publicado (D-48, D-49) y del origen de precios de SICC (D-68).',
   },
-  form: {
-    nombre: 'Formulario de precios',
-    motivo: 'El formulario sale de la exportación, que todavía no existe en la API.',
-  },
-  res: {
-    nombre: 'Resumen desagregado',
-    motivo: 'Requiere un recurso de desagregación (materiales, mano de obra, equipo y transporte) en la API.',
-  },
   gantt: {
     nombre: 'Gantt',
     motivo: 'El cronograma depende de la regla de reparto en el tiempo (R-016), que aún no está decidida.',
-  },
-  hist: {
-    nombre: 'Historial',
-    motivo: 'El historial de cambios depende del registro de operaciones, que todavía no está implementado.',
   },
 }
 
@@ -128,6 +116,9 @@ function App() {
   const [cargando, setCargando] = useState(true)
   const [hoja, setHoja] = useState<Hoja>('cd')
   const [itemSel, setItemSel] = useState<string | null>(null)
+  const [medidorAbierto, setMedidorAbierto] = useState(false)
+  const [capituloAbierto, setCapituloAbierto] = useState(false)
+  const [itemAbierto, setItemAbierto] = useState(false)
   const [mostrarApu, setMostrarApu] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
@@ -221,6 +212,32 @@ function App() {
     }
   }
 
+  /** Abre el medidor de cantidades de una actividad: la indicada, o la seleccionada (F6). */
+  function abrirMedidor(codigo?: string) {
+    const destino = codigo ?? itemSel
+    if (!presupuesto || !destino) {
+      setAviso('Selecciona una actividad para medir sus cantidades.')
+      return
+    }
+    setItemSel(destino)
+    setMedidorAbierto(true)
+  }
+
+  // F6 abre el medidor de la actividad seleccionada, como el atajo de la barra.
+  useEffect(() => {
+    function alPresionar(evento: KeyboardEvent) {
+      if (evento.key !== 'F6') return
+      evento.preventDefault()
+      if (!presupuesto || !itemSel) {
+        setAviso('Selecciona una actividad para medir sus cantidades.')
+        return
+      }
+      setMedidorAbierto(true)
+    }
+    window.addEventListener('keydown', alPresionar)
+    return () => window.removeEventListener('keydown', alPresionar)
+  }, [itemSel, presupuesto])
+
   function seleccionarCapitulo(codigo: string) {
     setHoja('cd')
     document.getElementById(`capitulo-${codigo}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -244,8 +261,8 @@ function App() {
     { etiqueta: 'Deshacer', icono: I.deshacer, tecla: 'Ctrl+Z', deshabilitado: true, motivo: PENDIENTE_API },
     { etiqueta: 'Rehacer', icono: I.rehacer, tecla: 'Ctrl+Y', deshabilitado: true, motivo: PENDIENTE_API },
     'sep',
-    { etiqueta: 'Ítem', icono: I.item, deshabilitado: true, motivo: PENDIENTE_API },
-    { etiqueta: 'Capítulo', icono: I.capitulo, deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Ítem', icono: I.item, onClick: () => setItemAbierto(true) },
+    { etiqueta: 'Capítulo', icono: I.capitulo, onClick: () => setCapituloAbierto(true) },
     { etiqueta: 'Eliminar', icono: I.eliminar, deshabilitado: true, motivo: PENDIENTE_API },
     {
       etiqueta: seleccionado?.excluido ? 'Incluir' : 'Excluir',
@@ -259,15 +276,15 @@ function App() {
       },
     },
     'sep',
-    { etiqueta: 'Cantidades', icono: I.cantidades, tecla: 'F6', deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Cantidades', icono: I.cantidades, tecla: 'F6', onClick: () => abrirMedidor() },
     { etiqueta: 'APU', icono: I.apu, tecla: 'F3', onClick: () => setMostrarApu((v) => !v) },
     { etiqueta: 'Ítem base', icono: I.base, tecla: 'F4', deshabilitado: true, motivo: PENDIENTE_API },
     { etiqueta: 'Insumos', icono: I.insumos, deshabilitado: true, motivo: PENDIENTE_API },
     { etiqueta: 'Precios', icono: I.precios, tecla: 'F7', deshabilitado: true, motivo: PENDIENTE_API },
     'sep',
     { etiqueta: 'AIU e IVA', icono: I.aiu, onClick: () => setHoja('dg') },
-    { etiqueta: 'Formulario', icono: I.formulario, deshabilitado: true, motivo: PENDIENTE_API },
-    { etiqueta: 'Resumen', icono: I.resumen, deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Formulario', icono: I.formulario, onClick: () => setHoja('form') },
+    { etiqueta: 'Resumen', icono: I.resumen, onClick: () => setHoja('res') },
     { etiqueta: 'Gantt', icono: I.gantt, deshabilitado: true, motivo: PENDIENTE_API },
     { etiqueta: 'Excel', icono: I.excel, deshabilitado: true, motivo: PENDIENTE_API },
   ]
@@ -288,9 +305,7 @@ function App() {
         <header className="siap-titulo">
           <span className="siap-marca">SIAP</span>
           <span className="siap-nombre-programa">Sistema Integral de Análisis de Precios</span>
-          <span className="siap-titulo-doc">{presupuesto ? `${presupuesto.nombre}.siap` : 'Sin presupuestos'}</span>
           <span className="derecha">
-            <span>Maqueta · datos de ejemplo</span>
             <b>Innovatek S.A.S.</b>
           </span>
         </header>
@@ -397,7 +412,7 @@ function App() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem icon={I.cantidades} secondaryContent="F6" disabled title={PENDIENTE_API}>
+                <MenuItem icon={I.cantidades} secondaryContent="F6" onClick={() => abrirMedidor()}>
                   Generador de cantidades
                 </MenuItem>
                 <MenuDivider />
@@ -598,6 +613,7 @@ function App() {
                     <CostosDirectos
                       presupuesto={presupuesto}
                       itemSeleccionado={itemSel}
+                      onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
                       onSeleccionarItem={setItemSel}
                       onCambiarCantidad={cambiarCantidad}
                       bloqueado={false}
@@ -605,13 +621,22 @@ function App() {
                   </div>
                   {mostrarApu && seleccionado && (
                     <PanelApu
-                      key={seleccionado.codigoAnalisis}
+                      key={`${seleccionado.codigoAnalisis}-${presupuesto?.id}-${presupuesto?.total}`}
+                      presupuestoId={presupuesto?.id ?? ''}
                       codigoAnalisis={seleccionado.codigoAnalisis}
                       codigoItem={seleccionado.codigo}
+                      onGuardado={(actualizado) => {
+                        setPresupuesto(actualizado)
+                        setAviso(null)
+                      }}
                     />
                   )}
                 </>
               )}
+              {hoja === 'cant' && presupuesto && <Cantidades presupuesto={presupuesto} onAbrirMedidor={(codigo) => abrirMedidor(codigo)} />}
+              {hoja === 'res' && presupuesto && <ResumenDesagregadoVista key={`res-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
+              {hoja === 'form' && presupuesto && <FormularioPreciosVista key={`form-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
+              {hoja === 'hist' && presupuesto && <HistorialVista key={`hist-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
               {hoja === 'dg' && (
                 <AiuEIva
                   key={`${presupuesto.id}-${JSON.stringify(presupuesto.configuracion)}`}
@@ -638,6 +663,40 @@ function App() {
           <span>En línea · cálculo en la API</span>
         </footer>
 
+        {medidorAbierto && presupuesto && seleccionado && (
+          <MedidorCantidades
+            presupuestoId={presupuesto.id}
+            codigoItem={seleccionado.codigo}
+            descripcion={seleccionado.descripcion}
+            unidad={seleccionado.unidad}
+            onCerrar={() => setMedidorAbierto(false)}
+            onGuardado={(actualizado) => {
+              setPresupuesto(actualizado)
+              setAviso(null)
+            }}
+          />
+        )}
+        {presupuesto && (
+          <DialogoCapitulo
+            abierto={capituloAbierto}
+            onCancelar={() => setCapituloAbierto(false)}
+            onConfirmar={async (nombre) => {
+              setCapituloAbierto(false)
+              await aplicar(() => api.agregarCapitulo(presupuesto.id, nombre))
+            }}
+          />
+        )}
+        {itemAbierto && presupuesto && (
+          <DialogoItem
+            presupuesto={presupuesto}
+            capituloInicial={capituloActivo}
+            onCerrar={() => setItemAbierto(false)}
+            onCreado={(actualizado) => {
+              setPresupuesto(actualizado)
+              setAviso(null)
+            }}
+          />
+        )}
         <DialogoExcluir
           abierto={aExcluir !== null}
           descripcion={aExcluir?.descripcion ?? ''}

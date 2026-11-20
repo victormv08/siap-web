@@ -82,6 +82,127 @@ export interface Analisis {
   parciales: ParcialLinea[]
 }
 
+/** Tipo de fila de la memoria de cantidades (RD-067). Los valores coinciden con la API. */
+export type TipoFilaMemoria = 'Fila' | 'Subtitulo' | 'Descuento'
+
+/** Fila tal como la guarda la API. El valor lo calcula el núcleo; la web no lo recalcula. */
+export interface FilaMemoriaRespuesta {
+  tipo: TipoFilaMemoria
+  observacion: string
+  largo: number | null
+  ancho: number | null
+  alto: number | null
+  piezas: number | null
+  valor: number | null
+}
+
+export interface MemoriaRespuesta {
+  codigoItem: string
+  total: number
+  filas: FilaMemoriaRespuesta[]
+}
+
+export interface FilaMemoriaSolicitud {
+  tipo: TipoFilaMemoria
+  observacion: string | null
+  largo: number | null
+  ancho: number | null
+  alto: number | null
+  piezas: number | null
+}
+
+export interface MemoriaGuardadaRespuesta {
+  memoria: MemoriaRespuesta
+  presupuesto: Presupuesto
+}
+
+/** Línea de un análisis: un insumo con su precio, o un subanálisis (por código). */
+export interface LineaAnalisis {
+  tipo: 'Insumo' | 'Subanalisis'
+  descripcion: string
+  unidad: string
+  tipoLinea: TipoLinea | null
+  codigoAnalisis: string | null
+  cantidad: number
+  precio: number | null
+}
+
+export interface AnalisisEditable {
+  codigo: string
+  descripcion: string
+  unidad: string
+  costoDirecto: number
+  lineas: LineaAnalisis[]
+  parciales: ParcialLinea[]
+}
+
+export interface LineaAnalisisSolicitud {
+  tipo: 'Insumo' | 'Subanalisis'
+  descripcion: string | null
+  unidad: string | null
+  tipoLinea: TipoLinea | null
+  codigoAnalisis: string | null
+  cantidad: number
+  precio: number
+}
+
+export interface EditarAnalisisSolicitud {
+  descripcion: string
+  unidad: string
+  lineas: LineaAnalisisSolicitud[]
+}
+
+export interface CategoriaCosto {
+  tipo: TipoLinea
+  monto: number
+  porcentaje: number
+}
+
+export interface ResumenDesagregado {
+  categorias: CategoriaCosto[]
+  total: number
+  costoDirecto: number
+}
+
+export interface FilaFormulario {
+  capitulo: string
+  item: string
+  codigoAnalisis: string
+  descripcion: string
+  unidad: string
+  cantidad: number
+  precioUnitario: number
+  valor: number
+  excluido: boolean
+}
+
+export interface EntradaHistorial {
+  cuando: string
+  autor: string
+  accion: string
+  detalle: string
+}
+
+export interface CapituloCatalogo {
+  numero: string
+  nombre: string
+}
+
+export interface ActividadCatalogo {
+  codigo: string
+  capitulo: string
+  descripcion: string
+  unidad: string
+  precioUnitario: number
+}
+
+export interface NuevoItemSolicitud {
+  descripcion: string
+  unidad: string | null
+  cantidad: number
+  codigoAnalisis: string
+}
+
 export interface ActualizarItemSolicitud {
   cantidad: number
   excluido: boolean
@@ -121,11 +242,54 @@ export const api = {
       body: JSON.stringify(cambio),
     }),
 
+  catalogoCapitulos: () => pedir<CapituloCatalogo[]>('/catalogo/capitulos'),
+
+  catalogoActividades: (capitulo: string) =>
+    pedir<ActividadCatalogo[]>(`/catalogo/actividades?capitulo=${encodeURIComponent(capitulo)}`),
+
+  agregarItem: (id: string, codigoCapitulo: string, datos: NuevoItemSolicitud) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos/${encodeURIComponent(codigoCapitulo)}/items`, {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    }),
+
+  analisisDelPresupuesto: (id: string, codigo: string) =>
+    pedir<AnalisisEditable>(`/presupuestos/${encodeURIComponent(id)}/analisis/${encodeURIComponent(codigo)}`),
+
+  editarAnalisis: (id: string, codigo: string, datos: EditarAnalisisSolicitud) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/analisis/${encodeURIComponent(codigo)}`, {
+      method: 'PUT',
+      body: JSON.stringify(datos),
+    }),
+
+  resumenDesagregado: (id: string) => pedir<ResumenDesagregado>(`/presupuestos/${encodeURIComponent(id)}/resumen-desagregado`),
+
+  formulario: (id: string) => pedir<FilaFormulario[]>(`/presupuestos/${encodeURIComponent(id)}/formulario`),
+
+  historial: (id: string) => pedir<EntradaHistorial[]>(`/presupuestos/${encodeURIComponent(id)}/historial`),
+
+  agregarCapitulo: (id: string, nombre: string) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos`, {
+      method: 'POST',
+      body: JSON.stringify({ nombre }),
+    }),
+
   actualizarCierre: (id: string, cierre: ConfiguracionCierre) =>
     pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/cierre`, {
       method: 'PUT',
       body: JSON.stringify(cierre),
     }),
+
+  memoria: (id: string, codigoItem: string) =>
+    pedir<MemoriaRespuesta>(
+      `/presupuestos/${encodeURIComponent(id)}/items/${encodeURIComponent(codigoItem)}/memoria`,
+    ),
+
+  guardarMemoria: (id: string, codigoItem: string, filas: FilaMemoriaSolicitud[]) =>
+    pedir<MemoriaGuardadaRespuesta>(
+      `/presupuestos/${encodeURIComponent(id)}/items/${encodeURIComponent(codigoItem)}/memoria`,
+      { method: 'PUT', body: JSON.stringify({ filas }) },
+    ),
 
   analisis: (codigo: string) => pedir<Analisis>(`/analisis/${encodeURIComponent(codigo)}`),
 }
