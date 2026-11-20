@@ -1,8 +1,4 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
 
-// Sin globals de Vitest, Testing Library no limpia solo el DOM entre pruebas.
-afterEach(() => {
-  cleanup()
-})
+// La limpieza del DOM entre pruebas (cleanup de Testing Library) la hace cada archivo de pruebas
+// en su propio afterEach: Vitest 5 no admite registrar ese hook a nivel de módulo en setupFiles.
