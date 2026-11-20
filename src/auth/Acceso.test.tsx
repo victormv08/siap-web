@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
@@ -95,15 +95,62 @@ describe('Pantalla de entrada', () => {
     apiSimulada()
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Ingresar a SIAP' })).toBeInTheDocument()
     expect(screen.getByLabelText(/^Empresa/)).toBeInTheDocument()
     expect(screen.queryByText('Costos directos')).not.toBeInTheDocument()
+  })
+
+  it('muestra el título nuevo y el subtítulo', async () => {
+    apiSimulada()
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ingresar a SIAP' })).toBeInTheDocument()
+    expect(screen.getByText('Seleccione su empresa e ingrese sus credenciales')).toBeInTheDocument()
+    expect(screen.getByText('Presupuestos de obra, claros y trazables')).toBeInTheDocument()
+  })
+
+  it('la ilustración es decorativa: oculta a lectores de pantalla y sin foco', async () => {
+    apiSimulada()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
+
+    const ilustracion = screen.getByTestId('ilustracion-acceso')
+
+    expect(ilustracion).toHaveAttribute('aria-hidden', 'true')
+    expect(ilustracion).toHaveAttribute('role', 'presentation')
+    expect(ilustracion).toHaveAttribute('focusable', 'false')
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  it('tiene un pie de página con Innovatek, el año actual y los derechos, sin enlaces', async () => {
+    apiSimulada()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
+
+    const pie = screen.getByRole('contentinfo')
+
+    expect(within(pie).getByText('Innovatek S.A.S.')).toBeInTheDocument()
+    expect(pie).toHaveTextContent(`© ${new Date().getFullYear()} Innovatek S.A.S.`)
+    expect(pie).toHaveTextContent('Todos los derechos reservados')
+    expect(pie).toHaveTextContent('SIAP · Sistema Integral de Análisis de Precios')
+    expect(within(pie).queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('el pie es lo último de la pantalla, fuera de la tarjeta de entrada', async () => {
+    apiSimulada()
+    render(<App />)
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
+
+    const pie = screen.getByRole('contentinfo')
+
+    expect(pie.nextElementSibling).toBeNull()
+    expect(screen.getByRole('main')).not.toContainElement(pie)
   })
 
   it('carga las empresas en el selector: nombre a la vista, marcador al inicio, nada elegido', async () => {
     const { llamadas } = apiSimulada()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     const selector = await selectorDeEmpresa()
 
@@ -128,7 +175,7 @@ describe('Pantalla de entrada', () => {
       }),
     )
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
     expect(screen.getByRole('option', { name: 'Cargando empresas…' })).toBeInTheDocument()
@@ -140,7 +187,7 @@ describe('Pantalla de entrada', () => {
   it('con una sola empresa, queda preseleccionada', async () => {
     apiSimulada({ empresas: () => json([EMPRESAS[0]]) })
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     const selector = await selectorDeEmpresa()
 
@@ -154,7 +201,7 @@ describe('Pantalla de entrada', () => {
     })
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Servicio no disponible.')
     expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
@@ -169,7 +216,7 @@ describe('Pantalla de entrada', () => {
   it('si la lista falla sin detalle, usa el mensaje de respaldo', async () => {
     apiSimulada({ empresas: () => new Response('no es json', { status: 500 }) })
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/La API respondió 500|No se pudieron cargar las empresas/)
   })
@@ -177,7 +224,7 @@ describe('Pantalla de entrada', () => {
   it('si no hay empresas, lo dice y deja el selector deshabilitado', async () => {
     apiSimulada({ empresas: () => json([]) })
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     expect(await screen.findByText('No hay empresas disponibles.')).toBeInTheDocument()
     expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
@@ -203,7 +250,7 @@ describe('Pantalla de entrada', () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
     await selectorDeEmpresa()
 
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
@@ -219,7 +266,7 @@ describe('Pantalla de entrada', () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
     await selectorDeEmpresa()
 
     await llenar(usuario, '', 'ana', 'clave-de-mentira')
@@ -237,7 +284,7 @@ describe('Pantalla de entrada', () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     await llenar(usuario, 'EMP-PRUEBA', 'ana', 'corta')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
@@ -251,7 +298,7 @@ describe('Pantalla de entrada', () => {
     const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     await llenar(usuario, 'EMP-OTRA', ' ana ', 'clave-de-mentira')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
@@ -268,7 +315,7 @@ describe('Pantalla de entrada', () => {
     apiSimulada({ login: () => json({ detail: 'Empresa, usuario o contraseña incorrectos.' }, 401) })
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     await llenar(usuario, 'EMP-PRUEBA', 'ana', 'clave-equivocada')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
@@ -284,7 +331,7 @@ describe('Pantalla de entrada', () => {
     apiSimulada({ login: () => json({ detail: 'Demasiados intentos. Espere 5 minutos.' }, 429) })
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     await llenar(usuario, 'EMP-PRUEBA', 'ana', 'clave-de-mentira')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
@@ -295,7 +342,7 @@ describe('Pantalla de entrada', () => {
   it('no queda ningún texto que pida escribir el código de la empresa', async () => {
     apiSimulada()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
     await selectorDeEmpresa()
 
     expect(screen.queryByText(/código/i)).not.toBeInTheDocument()
@@ -314,7 +361,7 @@ describe('Sesión', () => {
     render(<App />)
 
     await screen.findByText('Empresa de prueba')
-    expect(screen.queryByRole('heading', { name: 'Ingresar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Ingresar a SIAP' })).not.toBeInTheDocument()
     expect(csrfActual()).toBe('token-uno')
   })
 
@@ -326,7 +373,7 @@ describe('Sesión', () => {
 
     await usuario.click(screen.getByRole('button', { name: 'Salir' }))
 
-    expect(await screen.findByRole('heading', { name: 'Ingresar' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Ingresar a SIAP' })).toBeInTheDocument()
     const salida = llamadas.find((l) => l.url === '/api/auth/logout')
     expect(salida?.metodo).toBe('POST')
     expect(salida?.cabeceras['X-CSRF-Token']).toBe('token-uno')
@@ -348,7 +395,7 @@ describe('Sesión', () => {
     await expect(api.listar()).rejects.toThrow()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Su sesión terminó. Ingrese de nuevo.')
-    expect(screen.getByRole('heading', { name: 'Ingresar' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ingresar a SIAP' })).toBeInTheDocument()
     expect(csrfActual()).toBeNull()
   })
 
@@ -356,7 +403,7 @@ describe('Sesión', () => {
     apiSimulada({ login: () => json({ detail: 'Empresa, usuario o contraseña incorrectos.' }, 401) })
     const usuario = userEvent.setup()
     render(<App />)
-    await screen.findByRole('heading', { name: 'Ingresar' })
+    await screen.findByRole('heading', { name: 'Ingresar a SIAP' })
 
     await llenar(usuario, 'EMP-PRUEBA', 'ana', 'clave-equivocada')
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))

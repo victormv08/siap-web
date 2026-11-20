@@ -1,5 +1,5 @@
 /* Apariencia de SIAP según la maqueta de referencia (solo estilos; ningún cálculo).
-   Tema oscuro por defecto (como la maqueta). Tema claro con data-theme="light". */
+   Tema claro por defecto (data-theme="light" en index.html). Tema oscuro con data-theme="dark" (menú Ayuda). */
 
 :root {
   --title: #0f1d33;
@@ -159,6 +159,12 @@ select {
 .siap-titulo .derecha b {
   color: var(--on-title);
   font-weight: 700;
+}
+
+/* El nombre de la persona va sobre la barra de marca: usa el color de la barra (legible en claro y oscuro). */
+.siap-titulo .derecha .siap-usuario {
+  color: var(--on-title);
+  opacity: 0.9;
 }
 
 .siap-titulo .derecha .siap-salir {

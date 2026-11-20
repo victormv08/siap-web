@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { FluentProvider, Spinner, webDarkTheme } from '@fluentui/react-components'
+import { FluentProvider, Spinner, webLightTheme } from '@fluentui/react-components'
 import { useSesion } from './contextoSesion'
 import { PantallaEntrada } from './PantallaEntrada'
 
@@ -9,7 +9,7 @@ export function GuardianSesion({ children }: { children: ReactNode }) {
 
   if (estado === 'cargando') {
     return (
-      <FluentProvider theme={webDarkTheme}>
+      <FluentProvider theme={webLightTheme}>
         <div style={{ padding: 16 }}>
           <Spinner label="Comprobando la sesión…" />
         </div>

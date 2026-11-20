@@ -128,7 +128,7 @@ function AplicacionPresupuestos() {
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
   const [panelCapitulos, setPanelCapitulos] = useState(true)
   const [barraVisible, setBarraVisible] = useState(true)
-  const [tema, setTema] = useState<'oscuro' | 'claro'>('oscuro')
+  const [tema, setTema] = useState<'oscuro' | 'claro'>('claro')
 
   // El tema vive en el atributo data-theme de la página; los estilos de estilos.css lo leen.
   useEffect(() => {
@@ -295,7 +295,7 @@ function AplicacionPresupuestos() {
 
   if (cargando) {
     return (
-      <FluentProvider theme={webDarkTheme}>
+      <FluentProvider theme={webLightTheme}>
         <div style={{ padding: 16 }}>
           <Spinner label="Cargando presupuesto desde la API…" />
         </div>
@@ -311,7 +311,7 @@ function AplicacionPresupuestos() {
           <span className="siap-nombre-programa">Sistema Integral de Análisis de Precios</span>
           <span className="derecha">
             <b>{sesion?.empresa.nombre}</b>
-            <span>{sesion?.usuario.nombre}</span>
+            <span className="siap-usuario">{sesion?.usuario.nombre}</span>
             <button type="button" className="siap-salir" onClick={() => void salir()}>
               Salir
             </button>
