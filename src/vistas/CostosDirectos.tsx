@@ -1,40 +1,12 @@
 import { useState } from 'react'
-import {
-  Badge,
-  Button,
-  Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components'
 import type { CapituloResultado, ItemResultado, Presupuesto } from '../api/cliente'
 import { decimales, pesos } from '../formato'
-
-const estilos = makeStyles({
-  contenedor: { overflow: 'auto', minHeight: 0, flex: 1, backgroundColor: tokens.colorNeutralBackground1 },
-  tabla: { minWidth: '760px' },
-  numero: { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
-  capitulo: { backgroundColor: tokens.colorPaletteYellowBackground2, fontWeight: tokens.fontWeightSemibold },
-  subtotal: { backgroundColor: tokens.colorNeutralBackground3, fontWeight: tokens.fontWeightSemibold },
-  excluido: { color: tokens.colorNeutralForeground3, fontStyle: 'italic' },
-  seleccionado: { backgroundColor: tokens.colorBrandBackground2 },
-  entrada: { width: '110px', textAlign: 'right' },
-  acciones: { display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' },
-})
 
 interface Props {
   presupuesto: Presupuesto
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
-  onExcluir: (item: ItemResultado) => void
-  onIncluir: (item: ItemResultado) => Promise<void>
   bloqueado: boolean
 }
 
@@ -46,110 +18,98 @@ function leerCantidad(texto: string): number | null {
   return Number.isFinite(valor) ? valor : null
 }
 
-export function CostosDirectos({
-  presupuesto,
-  itemSeleccionado,
-  onSeleccionarItem,
-  onCambiarCantidad,
-  onExcluir,
-  onIncluir,
-  bloqueado,
-}: Props) {
-  const e = estilos()
+/** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, bloqueado }: Props) {
   return (
-    <div className={e.contenedor} role="region" aria-label="Cuadro de costos directos">
-      <Table size="small" className={e.tabla} aria-label="Ítems del presupuesto">
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Ítem</TableHeaderCell>
-            <TableHeaderCell>Actividad</TableHeaderCell>
-            <TableHeaderCell>Unidad</TableHeaderCell>
-            <TableHeaderCell>Cantidad</TableHeaderCell>
-            <TableHeaderCell>Vr. unitario</TableHeaderCell>
-            <TableHeaderCell>Vr. total</TableHeaderCell>
-            <TableHeaderCell>Estado</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {presupuesto.capitulos.map((capitulo) => (
-            <FilasCapitulo
-              key={capitulo.codigo}
-              capitulo={capitulo}
-              itemSeleccionado={itemSeleccionado}
-              onSeleccionarItem={onSeleccionarItem}
-              onCambiarCantidad={onCambiarCantidad}
-              onExcluir={onExcluir}
-              onIncluir={onIncluir}
-              bloqueado={bloqueado}
-            />
-          ))}
-          <TableRow className={e.subtotal}>
-            <TableCell colSpan={5}>Total costo directo</TableCell>
-            <TableCell className={e.numero}>$ {pesos(presupuesto.costoDirecto)}</TableCell>
-            <TableCell />
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
+    <table className="g" aria-label="Ítems del presupuesto">
+      <thead>
+        <tr>
+          <th style={{ width: 90 }}>Ítem</th>
+          <th>Actividad</th>
+          <th style={{ width: 90 }}>Unidad</th>
+          <th style={{ width: 150 }}>Cantidad</th>
+          <th style={{ width: 150 }}>Vr. unitario</th>
+          <th style={{ width: 170 }}>Vr. total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {presupuesto.capitulos.map((capitulo, indice) => (
+          <FilasCapitulo
+            key={capitulo.codigo}
+            indice={indice}
+            capitulo={capitulo}
+            itemSeleccionado={itemSeleccionado}
+            onSeleccionarItem={onSeleccionarItem}
+            onCambiarCantidad={onCambiarCantidad}
+            bloqueado={bloqueado}
+          />
+        ))}
+        <tr className="capsum">
+          <td />
+          <td>TOTAL COSTO DIRECTO</td>
+          <td />
+          <td />
+          <td />
+          <td className="n">$ {pesos(presupuesto.costoDirecto)}</td>
+        </tr>
+      </tbody>
+    </table>
   )
 }
 
 interface FilasProps {
+  indice: number
   capitulo: CapituloResultado
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
-  onExcluir: (item: ItemResultado) => void
-  onIncluir: (item: ItemResultado) => Promise<void>
   bloqueado: boolean
 }
 
-function FilasCapitulo({
-  capitulo,
-  itemSeleccionado,
-  onSeleccionarItem,
-  onCambiarCantidad,
-  onExcluir,
-  onIncluir,
-  bloqueado,
-}: FilasProps) {
-  const e = estilos()
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, bloqueado }: FilasProps) {
   return (
     <>
-      <TableRow className={e.capitulo} id={`capitulo-${capitulo.codigo}`}>
-        <TableCell>{capitulo.codigo}</TableCell>
-        <TableCell colSpan={4}>{capitulo.nombre}</TableCell>
-        <TableCell className={e.numero}>Subtotal</TableCell>
-        <TableCell className={e.numero}>$ {pesos(capitulo.subtotal)}</TableCell>
-      </TableRow>
-      {capitulo.items.map((item) => (
+      <tr className="cap" id={`capitulo-${capitulo.codigo}`}>
+        <td>▾ {indice + 1}</td>
+        <td>{capitulo.nombre}</td>
+        <td />
+        <td />
+        <td />
+        <td className="n">$ {pesos(capitulo.subtotal)}</td>
+      </tr>
+      {capitulo.items.map((item, ii) => (
         <FilaItem
           key={item.codigo}
+          codigo={`${indice + 1}.${ii + 1}`}
           item={item}
           seleccionado={itemSeleccionado === item.codigo}
           onSeleccionar={() => onSeleccionarItem(item.codigo)}
           onCambiarCantidad={(cantidad) => onCambiarCantidad(item, cantidad)}
-          onExcluir={() => onExcluir(item)}
-          onIncluir={() => onIncluir(item)}
           bloqueado={bloqueado}
         />
       ))}
+      <tr className="capsum">
+        <td />
+        <td>Subtotal {indice + 1}. {capitulo.nombre}</td>
+        <td />
+        <td />
+        <td />
+        <td className="n">$ {pesos(capitulo.subtotal)}</td>
+      </tr>
     </>
   )
 }
 
 interface FilaProps {
+  codigo: string
   item: ItemResultado
   seleccionado: boolean
   onSeleccionar: () => void
   onCambiarCantidad: (cantidad: number) => Promise<void>
-  onExcluir: () => void
-  onIncluir: () => Promise<void>
   bloqueado: boolean
 }
 
-function FilaItem({ item, seleccionado, onSeleccionar, onCambiarCantidad, onExcluir, onIncluir, bloqueado }: FilaProps) {
-  const e = estilos()
+function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, bloqueado }: FilaProps) {
   const [borrador, setBorrador] = useState<string | null>(null)
   const valorMostrado = borrador ?? decimales(item.cantidad)
 
@@ -161,67 +121,37 @@ function FilaItem({ item, seleccionado, onSeleccionar, onCambiarCantidad, onExcl
     await onCambiarCantidad(cantidad)
   }
 
+  const clases = [item.excluido ? 'excl' : '', seleccionado ? 'seleccionada' : ''].filter(Boolean).join(' ')
+
   return (
-    <TableRow
-      className={[item.excluido ? e.excluido : '', seleccionado ? e.seleccionado : ''].join(' ')}
-      onClick={onSeleccionar}
-      aria-selected={seleccionado}
-    >
-      <TableCell>{item.codigo}</TableCell>
-      <TableCell>{item.descripcion}</TableCell>
-      <TableCell>{item.unidad}</TableCell>
-      <TableCell className={e.numero}>
-        <Input
-          size="small"
-          className={e.entrada}
+    <tr className={clases} onClick={onSeleccionar} aria-selected={seleccionado}>
+      <td>{codigo}</td>
+      <td className="desc">
+        {item.descripcion}
+        {item.excluido && (
+          <span className="etiqueta" title={item.motivoExclusion ?? undefined}>
+            excluido
+          </span>
+        )}
+        {item.excluido && item.motivoExclusion && <span className="etiqueta neutra">{item.motivoExclusion}</span>}
+      </td>
+      <td>{item.unidad}</td>
+      <td className="n">
+        <input
           aria-label={`Cantidad del ítem ${item.codigo}`}
           value={valorMostrado}
           disabled={bloqueado || item.excluido}
-          onChange={(_, datos) => setBorrador(datos.value)}
+          onClick={(evento) => evento.stopPropagation()}
+          onChange={(evento) => setBorrador(evento.target.value)}
           onBlur={() => void confirmar()}
           onKeyDown={(evento) => {
             if (evento.key === 'Enter') void confirmar()
             if (evento.key === 'Escape') setBorrador(null)
           }}
         />
-      </TableCell>
-      <TableCell className={e.numero}>$ {pesos(item.precioUnitario)}</TableCell>
-      <TableCell className={e.numero}>{item.excluido ? 'no suma' : `$ ${pesos(item.valorConsiderado)}`}</TableCell>
-      <TableCell>
-        <div className={e.acciones}>
-          {item.excluido ? (
-            <>
-              <Badge appearance="outline" color="warning">Excluido</Badge>
-              <Text size={200} title={item.motivoExclusion ?? undefined}>
-                {item.motivoExclusion}
-              </Text>
-              <Button
-                size="small"
-                appearance="subtle"
-                disabled={bloqueado}
-                onClick={(evento) => {
-                  evento.stopPropagation()
-                  void onIncluir()
-                }}
-              >
-                Incluir
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="small"
-              appearance="subtle"
-              disabled={bloqueado}
-              onClick={(evento) => {
-                evento.stopPropagation()
-                onExcluir()
-              }}
-            >
-              Excluir
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
+      </td>
+      <td className="n">$ {pesos(item.precioUnitario)}</td>
+      <td className="n">{item.excluido ? 'no suma' : `$ ${pesos(item.valorConsiderado)}`}</td>
+    </tr>
   )
 }

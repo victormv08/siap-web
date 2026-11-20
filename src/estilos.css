@@ -1,0 +1,513 @@
+/* Apariencia de SIAP según la maqueta de referencia (solo estilos; ningún cálculo).
+   Tema oscuro por defecto (como la maqueta). Tema claro con data-theme="light". */
+
+:root {
+  --title: #0f1d33;
+  --on-title: #e9eef6;
+  --yel: #d9b84a;
+  --menu: #161c28;
+  --menu-hover: #223049;
+  --bar: #151b27;
+  --bar-line: #2a3446;
+  --desk: #0e1117;
+  --paper: #13171f;
+  --paper-2: #161b24;
+  --grid: #262e3c;
+  --head: #1b2230;
+  --text: #c9ced8;
+  --text-2: #9ba4b3;
+  --muted: #6f7a8c;
+  --accent: #6ba3f7;
+  --accent-soft: #1d2b44;
+  --cap: #3a2f10;
+  --cap-text: #f2d57a;
+  --sub: #1c1d22;
+  --sel: #1f3358;
+  --sel-line: #6ba3f7;
+  --tag-bg: #3b2a10;
+  --tag-text: #f2a75c;
+  --tag-line: #6c4818;
+  --warn: #f2a75c;
+  --warn-soft: #33240f;
+  --warn-line: #6c4818;
+  --input: #0f131a;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 1px rgba(0, 0, 0, 0.6);
+  --font: "Segoe UI", Tahoma, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --title: #0f2240;
+  --on-title: #ffffff;
+  --yel: #c8a84d;
+  --menu: #f9fafb;
+  --menu-hover: #e4ebf8;
+  --bar: #f0f1f4;
+  --bar-line: #d3d8df;
+  --desk: #e6e9ee;
+  --paper: #ffffff;
+  --paper-2: #f9fafb;
+  --grid: #dde1e6;
+  --head: #f0f1f4;
+  --text: #1b2432;
+  --text-2: #4a5867;
+  --muted: #5e6b7a;
+  --accent: #2563eb;
+  --accent-soft: #e9eefa;
+  --cap: #f6efd8;
+  --cap-text: #4a3b0a;
+  --sub: #fbf8ee;
+  --sel: #e4ebf8;
+  --sel-line: #3b82f6;
+  --tag-bg: #fff3e0;
+  --tag-text: #9a4b00;
+  --tag-line: #f0c88e;
+  --warn: #9a4b00;
+  --warn-soft: #fff3e0;
+  --warn-line: #f0c88e;
+  --input: #ffffff;
+  --shadow: 0 6px 20px rgba(20, 35, 50, 0.25), 0 0 1px rgba(20, 35, 50, 0.3);
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--desk);
+  color: var(--text);
+  font: 12px/16px var(--font);
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.icono {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+/* Carcasa */
+.siap-app {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  height: 100%;
+  background: var(--desk);
+}
+
+.siap-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 12px;
+  background: var(--title);
+  color: var(--on-title);
+  white-space: nowrap;
+  overflow: hidden;
+  border-bottom: 2px solid var(--yel);
+}
+
+.siap-marca {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--yel);
+}
+
+.siap-nombre-programa {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.siap-titulo-doc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+}
+
+.siap-titulo .derecha {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.siap-titulo .derecha b {
+  color: var(--on-title);
+  font-weight: 700;
+}
+
+.siap-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  height: 28px;
+  background: var(--menu);
+  border-bottom: 1px solid var(--bar-line);
+  overflow-x: auto;
+}
+
+.siap-menu > div {
+  position: relative;
+}
+
+.siap-menu button {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.siap-menu button:hover {
+  background: var(--menu-hover);
+}
+
+.siap-herramientas {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  padding: 3px 6px;
+  background: var(--bar);
+  border-bottom: 1px solid var(--bar-line);
+  overflow-x: auto;
+}
+
+.siap-herramientas button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  height: 42px;
+  padding: 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.siap-herramientas button:hover:not(:disabled) {
+  background: var(--menu-hover);
+  border-color: var(--bar-line);
+}
+
+.siap-herramientas button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.siap-herramientas .tecla {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 10px;
+}
+
+.siap-herramientas .separador {
+  width: 1px;
+  background: var(--bar-line);
+  margin: 4px 3px;
+}
+
+/* Árbol de capítulos */
+.siap-trabajo {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  min-height: 0;
+  background: var(--paper);
+}
+
+.siap-trabajo.sin-arbol {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.siap-arbol {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--bar-line);
+  background: var(--paper-2);
+  overflow: auto;
+  min-height: 0;
+}
+
+.siap-ph {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--head);
+  border-bottom: 1px solid var(--grid);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.siap-arbol ul {
+  list-style: none;
+  margin: 0;
+  padding: 3px 0;
+}
+
+.siap-arbol li button {
+  display: block;
+  width: 100%;
+  padding: 5px 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.siap-arbol li button:hover {
+  background: var(--menu-hover);
+}
+
+.siap-arbol li button.activo {
+  background: var(--sel);
+  box-shadow: inset 3px 0 0 var(--yel);
+}
+
+.siap-arbol .sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.siap-arbol .raiz {
+  font-weight: 700;
+}
+
+.siap-arbol .meta {
+  margin-top: auto;
+  border-top: 1px solid var(--grid);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.siap-principal {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Rejilla */
+.siap-rejilla {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  background: var(--paper);
+}
+
+table.g {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  min-width: 700px;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.g th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 26px;
+  padding: 0 8px;
+  background: var(--head);
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 11px;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--grid);
+  border-right: 1px solid var(--grid);
+}
+
+.g td {
+  height: 26px;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--grid);
+  border-right: 1px solid var(--grid);
+}
+
+.g td.n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.g tr.cap td {
+  background: var(--cap);
+  color: var(--cap-text);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.g tr.cap td:first-child {
+  box-shadow: inset 3px 0 0 var(--yel);
+}
+
+.g tr.capsum td {
+  background: var(--sub);
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.g tr.excl td {
+  color: var(--muted);
+}
+
+.g tr.excl td.desc {
+  font-style: italic;
+}
+
+.g tr.seleccionada td {
+  background: var(--sel);
+}
+
+.g tr.seleccionada td.desc {
+  box-shadow: inset 3px 0 0 var(--sel-line);
+}
+
+.g td input {
+  width: 90px;
+  height: 20px;
+  border: 1px solid var(--sel-line);
+  border-radius: 2px;
+  outline: none;
+  background: var(--input);
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
+.g td input:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  margin-left: 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  border: 1px solid var(--tag-line);
+  vertical-align: middle;
+}
+
+.etiqueta.neutra {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+/* Panel APU */
+.siap-apu {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40%;
+  overflow: auto;
+  border-top: 2px double var(--bar-line);
+  background: var(--paper);
+}
+
+/* Barra de estado */
+.siap-estado {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 4px;
+  background: var(--bar);
+  border-top: 1px solid var(--bar-line);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.siap-estado > span {
+  padding: 0 10px;
+  border-right: 1px solid var(--bar-line);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+}
+
+.siap-estado .creciente {
+  flex: 1;
+  border-right: 0;
+}
+
+.siap-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+
+.siap-aviso {
+  margin: 4px 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .siap-trabajo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .siap-arbol {
+    display: none;
+  }
+}
