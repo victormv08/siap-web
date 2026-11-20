@@ -59,7 +59,7 @@ siap-web/
 │  ├─ App.test.tsx            pruebas del componente
 │  └─ test/setup.ts           preparación de las pruebas
 ├─ docs/                      arquitectura de este repositorio y decisiones de código
-└─ .github/                   integración continua, plantilla de PR y dependabot
+└─ .github/                   integración continua, plantilla de PR y CODEOWNERS
 ```
 
 ## Reglas de interfaz (no se negocian sin una decisión)

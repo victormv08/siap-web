@@ -21,7 +21,7 @@ Avisa **directamente a Victor Manuel** (dueño del repositorio). No abras una *i
 
 ## Dependencias
 
-- Dependabot propone actualizaciones semanales. Cada una pasa por la integración continua antes de integrarse.
+- Las dependencias se actualizan **a mano**: Dependabot se retiró el 2026-11-20 para no recibir propuestas automáticas. Quien actualiza una dependencia corre las pruebas y deja pasar la integración continua antes de integrar, y revisa los avisos de seguridad de GitHub (Settings › Code security).
 - No se agregan dependencias sin necesidad. Cada dependencia nueva se justifica en la PR (qué problema resuelve, licencia, mantenimiento, tamaño).
 - Se instala siempre con `npm ci`, que respeta `package-lock.json`.
 

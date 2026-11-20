@@ -31,9 +31,8 @@ Lista para el **dueño del repositorio** (Victor Manuel). Esto no se puede dejar
 
 ## 4. Seguridad
 
-- [ ] Dependabot alerts y **Dependabot security updates**: activar (Settings › Code security).
+- [ ] **Dependabot alerts** (avisos de dependencias con vulnerabilidades): activar (Settings › Code security). **Dependabot security updates y version updates: dejarlos desactivados.** El equipo retiró las actualizaciones automáticas el 2026-11-20 y actualiza a mano.
 - [ ] **Secret scanning** y **push protection**: activar, si el plan lo permite.
-- [ ] Revisar que el archivo `.github/dependabot.yml` esté detectado (Insights › Dependency graph › Dependabot).
 
 ## 5. Después de configurar
 
