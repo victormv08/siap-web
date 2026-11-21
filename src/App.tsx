@@ -79,6 +79,7 @@ function Icono({ trazo }: { trazo: ReactNode }) {
 }
 
 const I = {
+  inicio: <Icono trazo={<path d="M3 11 12 3l9 8M5 10v10h5v-6h4v6h5V10" />} />,
   nuevo: <Icono trazo={<><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" /><path d="M14 3v5h5M12 11v6M9 14h6" /></>} />,
   abrir: <Icono trazo={<path d="M3 7a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />} />,
   guardar: <Icono trazo={<><path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></>} />,
@@ -111,6 +112,10 @@ interface Accion {
   onClick?: () => void
   deshabilitado?: boolean
   motivo?: string
+  /** Nombre accesible si difiere del texto visible (debe contenerlo). */
+  nombreAccesible?: string
+  /** Es la hoja actual: se marca con aria-current y apariencia activa. */
+  activa?: boolean
 }
 
 function AplicacionPresupuestos() {
@@ -121,6 +126,8 @@ function AplicacionPresupuestos() {
   const [hoja, setHoja] = useState<Hoja>('cd')
   const [itemSel, setItemSel] = useState<string | null>(null)
   const [medidorAbierto, setMedidorAbierto] = useState(false)
+  // Actividades cuya cantidad sale de una memoria guardada en esta sesión (la API puede informarlo con tieneMemoria).
+  const [conMemoria, setConMemoria] = useState<ReadonlySet<string>>(new Set())
   const [capituloAbierto, setCapituloAbierto] = useState(false)
   const [itemAbierto, setItemAbierto] = useState(false)
   const [mostrarApu, setMostrarApu] = useState(true)
@@ -242,6 +249,38 @@ function AplicacionPresupuestos() {
     return () => window.removeEventListener('keydown', alPresionar)
   }, [itemSel, presupuesto])
 
+  /** Vuelve a Costos directos. La selección de capítulo y actividad no se toca, así que se conserva. */
+  function irAInicio() {
+    setHoja('cd')
+  }
+
+  // Escape vuelve a Costos directos desde otra hoja. Se escucha en la fase de captura: así ve el DOM
+  // ANTES de que Fluent cierre un diálogo con esa misma tecla, y no navega en la misma pulsación.
+  useEffect(() => {
+    if (hoja === 'cd') return
+    function alPresionar(evento: KeyboardEvent) {
+      if (evento.key !== 'Escape' || evento.ctrlKey || evento.metaKey || evento.altKey) return
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]')) return
+      const objetivo = evento.target
+      if (
+        objetivo instanceof HTMLElement &&
+        (objetivo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName))
+      ) {
+        return // un campo en edición conserva su Escape
+      }
+      evento.preventDefault()
+      setHoja('cd')
+    }
+    window.addEventListener('keydown', alPresionar, true)
+    return () => window.removeEventListener('keydown', alPresionar, true)
+  }, [hoja])
+
+  // Al volver a Costos directos, la actividad seleccionada vuelve a quedar a la vista.
+  useEffect(() => {
+    if (hoja !== 'cd') return
+    document.querySelector('.siap-rejilla tr.seleccionada')?.scrollIntoView?.({ block: 'nearest' })
+  }, [hoja])
+
   function seleccionarCapitulo(codigo: string) {
     setHoja('cd')
     document.getElementById(`capitulo-${codigo}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -258,6 +297,14 @@ function AplicacionPresupuestos() {
   const mostrarArbol = hoja === 'cd' && panelCapitulos
 
   const acciones: (Accion | 'sep')[] = [
+    {
+      etiqueta: 'Costos directos',
+      nombreAccesible: 'Costos directos (inicio)',
+      icono: I.inicio,
+      activa: hoja === 'cd',
+      onClick: irAInicio,
+    },
+    'sep',
     { etiqueta: 'Nuevo', icono: I.nuevo, onClick: () => void nuevoPresupuesto() },
     { etiqueta: 'Abrir', icono: I.abrir, deshabilitado: true, motivo: PENDIENTE_API },
     { etiqueta: 'Guardar', icono: I.guardar, deshabilitado: true, motivo: 'Cada cambio se guarda en la API al confirmarlo' },
@@ -307,7 +354,9 @@ function AplicacionPresupuestos() {
     <FluentProvider theme={tema === 'oscuro' ? webDarkTheme : webLightTheme} style={{ height: '100%' }}>
       <div className="siap-app">
         <header className="siap-titulo">
-          <span className="siap-marca">SIAP</span>
+          <button type="button" className="siap-marca" aria-label="Ir al inicio (SIAP)" title="Ir a Costos directos" onClick={irAInicio}>
+            SIAP
+          </button>
           <span className="siap-nombre-programa">Sistema Integral de Análisis de Precios</span>
           <span className="derecha">
             <b>{sesion?.empresa.nombre}</b>
@@ -558,8 +607,10 @@ function AplicacionPresupuestos() {
               <button
                 key={a.etiqueta}
                 type="button"
-                aria-label={a.etiqueta}
-                title={a.deshabilitado ? `${a.etiqueta}: ${a.motivo ?? PENDIENTE_API}` : a.etiqueta}
+                aria-label={a.nombreAccesible ?? a.etiqueta}
+                aria-current={a.activa ? 'page' : undefined}
+                className={a.activa ? 'activa' : undefined}
+                title={a.deshabilitado ? `${a.etiqueta}: ${a.motivo ?? PENDIENTE_API}` : (a.nombreAccesible ?? a.etiqueta)}
                 disabled={a.deshabilitado}
                 onClick={a.onClick}
               >
@@ -570,6 +621,17 @@ function AplicacionPresupuestos() {
             ),
           )}
         </div>
+
+        {hoja !== 'cd' ? (
+          <nav className="siap-franja" aria-label="Ubicación en el presupuesto">
+            <span className="siap-franja-titulo">{HOJAS.find(([clave]) => clave === hoja)?.[1]}</span>
+            <button type="button" className="siap-volver" onClick={irAInicio}>
+              <span aria-hidden="true">←</span> Volver a Costos directos
+            </button>
+          </nav>
+        ) : (
+          <span />
+        )}
 
         {aviso ? (
           <div className="siap-aviso">
@@ -622,6 +684,7 @@ function AplicacionPresupuestos() {
                       presupuesto={presupuesto}
                       itemSeleccionado={itemSel}
                       onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
+                      conMemoria={conMemoria}
                       onSeleccionarItem={setItemSel}
                       onCambiarCantidad={cambiarCantidad}
                       bloqueado={false}
@@ -641,7 +704,9 @@ function AplicacionPresupuestos() {
                   )}
                 </>
               )}
-              {hoja === 'cant' && presupuesto && <Cantidades presupuesto={presupuesto} onAbrirMedidor={(codigo) => abrirMedidor(codigo)} />}
+              {hoja === 'cant' && presupuesto && (
+                <Cantidades presupuesto={presupuesto} onAbrirMedidor={(codigo) => abrirMedidor(codigo)} conMemoria={conMemoria} />
+              )}
               {hoja === 'res' && presupuesto && <ResumenDesagregadoVista key={`res-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
               {hoja === 'form' && presupuesto && <FormularioPreciosVista key={`form-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
               {hoja === 'hist' && presupuesto && <HistorialVista key={`hist-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
@@ -678,9 +743,15 @@ function AplicacionPresupuestos() {
             descripcion={seleccionado.descripcion}
             unidad={seleccionado.unidad}
             onCerrar={() => setMedidorAbierto(false)}
-            onGuardado={(actualizado) => {
+            onGuardado={(actualizado, tieneFilas) => {
               setPresupuesto(actualizado)
               setAviso(null)
+              setConMemoria((previas) => {
+                const nuevas = new Set(previas)
+                if (tieneFilas) nuevas.add(seleccionado.codigo)
+                else nuevas.delete(seleccionado.codigo)
+                return nuevas
+              })
             }}
           />
         )}

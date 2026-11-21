@@ -8,6 +8,7 @@ const decimalesFormato = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 2,
 })
 const porcentajeFormato = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 })
+const pesoVarillaFormato = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
 
 /** Valor en pesos, sin decimales, como viene de la API. */
 export function pesos(valor: number): string {
@@ -17,6 +18,11 @@ export function pesos(valor: number): string {
 /** Cantidad o precio con dos decimales. */
 export function decimales(valor: number): string {
   return decimalesFormato.format(valor)
+}
+
+/** Peso del acero en kg/m con tres decimales: la tabla R-017 guarda 3 y mostrar 2 cambiaría el valor (0,996 → 1,00). */
+export function pesoKgPorMetro(valor: number): string {
+  return pesoVarillaFormato.format(valor)
 }
 
 /** Porcentaje en puntos (15 → «15»). */

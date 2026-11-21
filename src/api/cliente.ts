@@ -19,6 +19,8 @@ export interface ItemResultado {
   excluido: boolean
   motivoExclusion: string | null
   explicacion: string
+  /** La cantidad sale de una memoria de cálculo. Opcional: solo lo manda una API que lo informe. */
+  tieneMemoria?: boolean
 }
 
 export interface CapituloResultado {
@@ -95,11 +97,31 @@ export interface FilaMemoriaRespuesta {
   alto: number | null
   piezas: number | null
   valor: number | null
+  // Campos del generador completo (RD-067, R-017). Opcionales: una API anterior no los manda.
+  nivel?: string
+  eje?: string
+  tramo?: string
+  clasificador?: string
+  /** Código de la figura geométrica de la fila, o null si no usa figura. */
+  figura?: string | null
+  parametros?: Record<string, number> | null
+  // Acero de refuerzo.
+  esquema?: string
+  ref?: string
+  longitud?: number | null
+  barras?: number | null
+  /** Peso kg/m de la tabla de acero: lo devuelve la API, la web no lo escribe. */
+  peso?: number | null
 }
+
+/** Tipo de generador de cantidades (RD-067): medidas genéricas o acero de refuerzo (R-017). */
+export type GeneradorMemoria = 'Generico' | 'Acero'
 
 export interface MemoriaRespuesta {
   codigoItem: string
   total: number
+  generador?: GeneradorMemoria
+  observacionGeneral?: string
   filas: FilaMemoriaRespuesta[]
 }
 
@@ -110,6 +132,55 @@ export interface FilaMemoriaSolicitud {
   ancho: number | null
   alto: number | null
   piezas: number | null
+  nivel?: string | null
+  eje?: string | null
+  tramo?: string | null
+  clasificador?: string | null
+  figura?: string | null
+  parametros?: Record<string, number> | null
+  esquema?: string | null
+  ref?: string | null
+  longitud?: number | null
+  barras?: number | null
+}
+
+/** Cuerpo del PUT de la memoria completa: tipo de generador, observación general y todas las filas. */
+export interface GuardarMemoriaSolicitud {
+  generador: GeneradorMemoria
+  observacionGeneral: string
+  filas: FilaMemoriaSolicitud[]
+}
+
+export interface ParametroFigura {
+  codigo: string
+  etiqueta: string
+}
+
+/** Figura geométrica del generador (GEOMETRIA_GENERADOR): área (S) o volumen (V) a partir de medidas. */
+export interface FiguraGeometrica {
+  codigo: string
+  nombre: string
+  resultado: 'S' | 'V'
+  unidad: 'm2' | 'm3'
+  formula: string
+  parametros: ParametroFigura[]
+}
+
+export interface ResultadoFigura {
+  resultado: number
+  unidad: string
+  /** Fórmula con los valores sustituidos, calculada por la API. */
+  formula: string
+}
+
+export interface FilaTablaAcero {
+  ref: string
+  pesoKgPorMetro: number
+}
+
+export interface TablaAcero {
+  fuente: string
+  filas: FilaTablaAcero[]
 }
 
 export interface MemoriaGuardadaRespuesta {
@@ -294,6 +365,23 @@ export const api = {
       `/presupuestos/${encodeURIComponent(id)}/items/${encodeURIComponent(codigoItem)}/memoria`,
       { method: 'PUT', body: JSON.stringify({ filas }) },
     ),
+
+  /** PUT de la memoria completa (generador, observación general y filas). */
+  guardarMemoriaCompleta: (id: string, codigoItem: string, cuerpo: GuardarMemoriaSolicitud) =>
+    pedir<MemoriaGuardadaRespuesta>(
+      `/presupuestos/${encodeURIComponent(id)}/items/${encodeURIComponent(codigoItem)}/memoria`,
+      { method: 'PUT', body: JSON.stringify(cuerpo) },
+    ),
+
+  figuras: () => pedir<FiguraGeometrica[]>('/catalogo/figuras'),
+
+  calcularFigura: (codigo: string, parametros: Record<string, number>) =>
+    pedir<ResultadoFigura>(`/catalogo/figuras/${encodeURIComponent(codigo)}/calcular`, {
+      method: 'POST',
+      body: JSON.stringify({ parametros }),
+    }),
+
+  acero: () => pedir<TablaAcero>('/catalogo/acero'),
 
   analisis: (codigo: string) => pedir<Analisis>(`/analisis/${encodeURIComponent(codigo)}`),
 }

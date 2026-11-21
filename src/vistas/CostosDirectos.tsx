@@ -8,7 +8,19 @@ interface Props {
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
   onAbrirMedidor: (codigo: string) => void
+  /** Códigos de las actividades cuya cantidad sale de una memoria de cálculo (guardadas en esta sesión). */
+  conMemoria?: ReadonlySet<string>
   bloqueado: boolean
+}
+
+/** Icono de regla: abre el generador de cantidades. Decorativo; el botón lleva su nombre accesible. */
+export function IconoMedir() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <rect x="2.5" y="8" width="19" height="8" rx="1.5" />
+      <path d="M6.5 8v3.5M10.5 8v5M14.5 8v3.5M18.5 8v5" />
+    </svg>
+  )
 }
 
 /** Convierte lo que escribe la persona («12,5» o «12.5») en un número. Es entrada, no cálculo. */
@@ -20,7 +32,7 @@ function leerCantidad(texto: string): number | null {
 }
 
 /** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
-export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, bloqueado }: Props) {
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, conMemoria, bloqueado }: Props) {
   return (
     <table className="g" aria-label="Ítems del presupuesto">
       <thead>
@@ -43,6 +55,7 @@ export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarIte
             onSeleccionarItem={onSeleccionarItem}
             onCambiarCantidad={onCambiarCantidad}
             onAbrirMedidor={onAbrirMedidor}
+            conMemoria={conMemoria}
             bloqueado={bloqueado}
           />
         ))}
@@ -66,10 +79,11 @@ interface FilasProps {
   onSeleccionarItem: (codigo: string) => void
   onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
   onAbrirMedidor: (codigo: string) => void
+  conMemoria?: ReadonlySet<string>
   bloqueado: boolean
 }
 
-function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, bloqueado }: FilasProps) {
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, conMemoria, bloqueado }: FilasProps) {
   return (
     <>
       <tr className="cap" id={`capitulo-${capitulo.codigo}`}>
@@ -89,6 +103,7 @@ function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, 
           onAbrirMedidor={() => onAbrirMedidor(item.codigo)}
           onSeleccionar={() => onSeleccionarItem(item.codigo)}
           onCambiarCantidad={(cantidad) => onCambiarCantidad(item, cantidad)}
+          desdeMemoria={item.tieneMemoria === true || (conMemoria?.has(item.codigo) ?? false)}
           bloqueado={bloqueado}
         />
       ))}
@@ -111,10 +126,12 @@ interface FilaProps {
   onSeleccionar: () => void
   onAbrirMedidor: () => void
   onCambiarCantidad: (cantidad: number) => Promise<void>
+  /** La cantidad viene de una memoria de cálculo: no se edita a mano (el servidor tampoco lo permite). */
+  desdeMemoria: boolean
   bloqueado: boolean
 }
 
-function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, onAbrirMedidor, bloqueado }: FilaProps) {
+function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, onAbrirMedidor, desdeMemoria, bloqueado }: FilaProps) {
   const [borrador, setBorrador] = useState<string | null>(null)
   const valorMostrado = borrador ?? decimales(item.cantidad)
 
@@ -141,11 +158,12 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad
         {item.excluido && item.motivoExclusion && <span className="etiqueta neutra">{item.motivoExclusion}</span>}
       </td>
       <td>{item.unidad}</td>
-      <td className="n">
+      <td className={desdeMemoria ? 'n con-memoria' : 'n'}>
         <input
           aria-label={`Cantidad del ítem ${item.codigo}`}
           value={valorMostrado}
-          disabled={bloqueado || item.excluido}
+          disabled={bloqueado || item.excluido || desdeMemoria}
+          title={desdeMemoria ? 'La cantidad viene de la memoria de cálculo. Edítela en el generador de cantidades.' : undefined}
           onClick={(evento) => evento.stopPropagation()}
           onDoubleClick={(evento) => evento.stopPropagation()}
           onChange={(evento) => setBorrador(evento.target.value)}
@@ -155,6 +173,24 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad
             if (evento.key === 'Escape') setBorrador(null)
           }}
         />
+        <button
+          type="button"
+          className="btn-medir"
+          aria-label={`Medir cantidades de ${item.descripcion}`}
+          title="Generador de cantidades (F6)"
+          onClick={(evento) => {
+            evento.stopPropagation()
+            onAbrirMedidor()
+          }}
+          onDoubleClick={(evento) => evento.stopPropagation()}
+        >
+          <IconoMedir />
+        </button>
+        {desdeMemoria && (
+          <span className="etiqueta memoria" title="La cantidad sale de la memoria de cálculo">
+            memoria
+          </span>
+        )}
       </td>
       <td className="n">$ {pesos(item.precioUnitario)}</td>
       <td className="n">{item.excluido ? 'no suma' : `$ ${pesos(item.valorConsiderado)}`}</td>
