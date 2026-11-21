@@ -111,7 +111,7 @@ select {
 /* Carcasa */
 .siap-app {
   display: grid;
-  grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
   height: 100%;
   background: var(--desk);
 }
@@ -1326,5 +1326,36 @@ table.g.medidor.acero {
 
   .gen-total {
     flex-basis: 100%;
+  }
+}
+
+
+/* Pie de marca de Innovatek (no depende del tema): hace pareja con el de la pantalla de entrada. */
+.siap-pie-marca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 24px;
+  padding: 6px 16px;
+  background: #0f2240;
+  border-top: 3px solid #c8a84d;
+  color: #e9eef6;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.siap-pie-marca strong {
+  color: #c8a84d;
+}
+
+.siap-pie-marca .producto {
+  color: #b9c3d4;
+}
+
+@media (max-width: 600px) {
+  .siap-pie-marca {
+    flex-direction: column;
+    text-align: center;
   }
 }

@@ -136,6 +136,7 @@ export function instalarApi(opciones: Opciones = {}) {
     if (propia) return propia
 
     if (url === '/api/auth/me') return json(SESION)
+    if (url === '/api/presupuestos' && init.method === 'POST') return json(opciones.presupuesto ?? presupuestoDePrueba(), 201)
     if (url === '/api/presupuestos') return json([{ id: 'P-0001', nombre: 'Obra de prueba', costoDirecto: 500000, total: 575000 }])
     if (url === '/api/presupuestos/P-0001') return json(opciones.presupuesto ?? presupuestoDePrueba())
     if (url.startsWith('/api/presupuestos/P-0001/items/') && url.endsWith('/memoria')) {

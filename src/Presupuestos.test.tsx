@@ -196,7 +196,7 @@ describe('Nuevo presupuesto', () => {
   it('pide el nombre, envía POST con ese nombre y avisa cómo volver a otro', async () => {
     const { llamadas } = instalarApi({
       manejador: (url, init) =>
-        url === '/api/presupuestos' && init.method === 'POST'
+        url === '/api/presupuestos' && init.method === 'POST' && String(init.body).includes('Casa lote 7')
           ? json({ ...presupuestoDePrueba(), id: 'P-0003', nombre: 'Casa lote 7', capitulos: [] }, 201)
           : undefined,
     })
@@ -210,7 +210,7 @@ describe('Nuevo presupuesto', () => {
     await usuario.type(campo, 'Casa lote 7{Enter}')
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    const post = llamadas.find((l) => l.url === '/api/presupuestos' && l.metodo === 'POST')
+    const post = llamadas.find((l) => l.url === '/api/presupuestos' && (l.cuerpo as { nombre?: string } | undefined)?.nombre === 'Casa lote 7')
     expect(post?.cuerpo).toEqual({ nombre: 'Casa lote 7' })
     expect(screen.getByText('Se creó «Casa lote 7». Use «Abrir» para volver a otro presupuesto.')).toBeInTheDocument()
     expect(screen.queryByText(/Aún no hay una forma de agregar capítulos/)).not.toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('Nuevo presupuesto', () => {
     expect(within(dialogo).getByRole('button', { name: 'Crear presupuesto' })).toBeDisabled()
     await usuario.type(within(dialogo).getByLabelText(/Nombre del presupuesto/), '   {Enter}')
 
-    expect(llamadas.some((l) => l.metodo === 'POST')).toBe(false)
+    expect(llamadas.some((l) => l.metodo === 'POST' && (l.cuerpo as { nombre?: string } | undefined)?.nombre !== 'Presupuesto sin título')).toBe(false)
     expect(screen.getByRole('dialog', { name: 'Nuevo presupuesto' })).toBeInTheDocument()
   })
 
@@ -242,7 +242,7 @@ describe('Nuevo presupuesto', () => {
   it('si la API rechaza el nombre, el error se ve en el diálogo y sigue abierto', async () => {
     instalarApi({
       manejador: (url, init) =>
-        url === '/api/presupuestos' && init.method === 'POST' ? json({ detail: 'Ya existe un presupuesto con ese nombre.' }, 400) : undefined,
+        url === '/api/presupuestos' && init.method === 'POST' && String(init.body).includes('Repetido') ? json({ detail: 'Ya existe un presupuesto con ese nombre.' }, 400) : undefined,
     })
     const usuario = await abrirApp()
     await usuario.click(screen.getByRole('button', { name: 'Nuevo' }))
@@ -263,6 +263,65 @@ describe('Nuevo presupuesto', () => {
     await usuario.keyboard('{Escape}')
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(llamadas.some((l) => l.metodo === 'POST' && (l.cuerpo as { nombre?: string } | undefined)?.nombre !== 'Presupuesto sin título')).toBe(false)
+  })
+})
+
+describe('Presupuesto vacío al entrar', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  const EN_BLANCO = { id: 'P-0009', nombre: 'Presupuesto sin título', costoDirecto: 0, total: 0 }
+  const vacio = { ...presupuestoDePrueba(), id: 'P-0009', nombre: 'Presupuesto sin título', capitulos: [], costoDirecto: 0, total: 0 }
+
+  it('si no hay uno en blanco, crea «Presupuesto sin título» y entra con él, vacío', async () => {
+    const { llamadas } = instalarApi({
+      manejador: (url, init) => {
+        if (url === '/api/presupuestos' && init.method === 'POST') return json(vacio, 201)
+        if (url === '/api/presupuestos') return json(LISTA)
+        return undefined
+      },
+    })
+    render(<App />)
+
+    expect(await screen.findByTitle('Presupuesto sin título')).toBeInTheDocument()
+    const posts = llamadas.filter((l) => l.metodo === 'POST')
+    expect(posts).toHaveLength(1)
+    expect(posts[0].cuerpo).toEqual({ nombre: 'Presupuesto sin título' })
+    expect(screen.queryByText('Localización y replanteo')).not.toBeInTheDocument()
+  })
+
+  it('si ya quedó uno en blanco de otra visita, lo reutiliza y no crea otro', async () => {
+    const { llamadas } = instalarApi({
+      manejador: (url) => {
+        if (url === '/api/presupuestos') return json([...LISTA, EN_BLANCO])
+        if (url === '/api/presupuestos/P-0009') return json(vacio)
+        return undefined
+      },
+    })
+    render(<App />)
+
+    expect(await screen.findByTitle('Presupuesto sin título')).toBeInTheDocument()
     expect(llamadas.some((l) => l.metodo === 'POST')).toBe(false)
+  })
+})
+
+describe('Pie de Innovatek en la aplicación', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('el pie de Innovatek se ve también en la página de presupuestos', async () => {
+    instalarApi()
+    await abrirApp()
+
+    const pie = screen.getByRole('contentinfo', { name: 'Pie de página' })
+    expect(pie).toHaveTextContent('Innovatek S.A.S.')
+    expect(pie).toHaveTextContent('Todos los derechos reservados')
   })
 })

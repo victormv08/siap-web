@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { api } from '../api/cliente'
 import { csrfActual, fijarCsrf } from './enlace'
+import { presupuestoDePrueba } from '../test/apiDePrueba'
 
 /**
  * Pruebas de la pantalla de entrada y de la sesión, con la API simulada y datos inventados (D-16).
@@ -62,6 +63,7 @@ function apiSimulada(opciones: Opciones = {}) {
       sesionVigente = false
       return new Response(null, { status: 204 })
     }
+    if (url === '/api/presupuestos' && init?.method === 'POST') return json(presupuestoDePrueba(), 201)
     if (url === '/api/presupuestos') return json([])
     return json({ detail: 'No encontrado' }, 404)
   })

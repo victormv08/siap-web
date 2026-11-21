@@ -93,6 +93,7 @@ function apiSimulada(tras?: (url: string, init: RequestInit) => Response | undef
         csrfToken: 'token-de-prueba',
       })
     }
+    if (url === '/api/presupuestos' && init?.method === 'POST') return respuestaJson(presupuesto(), 201)
     if (url === '/api/presupuestos') return respuestaJson([{ id: 'P-0001', nombre: 'Obra de prueba', costoDirecto: 500000, total: 575000 }])
     if (url === '/api/presupuestos/P-0001') return respuestaJson(presupuesto())
     if (url.startsWith('/api/analisis/')) {

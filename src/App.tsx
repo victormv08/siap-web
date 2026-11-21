@@ -20,6 +20,7 @@ import type { ConfiguracionCierre, ItemResultado, Presupuesto, ResumenPresupuest
 import { pesos } from './formato'
 import { CostosDirectos } from './vistas/CostosDirectos'
 import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
+import { PieInnovatek } from './vistas/PieInnovatek'
 import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
@@ -35,6 +36,9 @@ import { Cantidades } from './vistas/Cantidades'
 import { FormularioPreciosVista, HistorialVista, ResumenDesagregadoVista } from './vistas/Reportes'
 import { HojaPendiente } from './vistas/HojaPendiente'
 import './estilos.css'
+
+/** Nombre del presupuesto vacío con el que se entra. */
+const NOMBRE_EN_BLANCO = 'Presupuesto sin título'
 
 type Hoja = 'cd' | 'cant' | 'apu' | 'ins' | 'dg' | 'tot' | 'form' | 'res' | 'gantt' | 'hist'
 
@@ -151,7 +155,8 @@ function AplicacionPresupuestos() {
     }
   }, [nombreAbierto])
 
-  // Carga inicial: el primer presupuesto de la organización.
+  // Carga inicial: se entra con un presupuesto vacío listo para llenar. Si ya quedó uno en blanco de una visita
+  // anterior se reutiliza; si no, se crea. Los demás (por ejemplo los de ejemplo) se escogen con «Abrir».
   useEffect(() => {
     let vigente = true
     api
@@ -159,10 +164,9 @@ function AplicacionPresupuestos() {
       .then(async (resumen) => {
         if (!vigente) return
         setLista(resumen)
-        if (resumen.length > 0) {
-          const completo = await api.obtener(resumen[0].id)
-          if (vigente) setPresupuesto(completo)
-        }
+        const enBlanco = resumen.find((r) => r.nombre === NOMBRE_EN_BLANCO && r.costoDirecto === 0)
+        const inicial = enBlanco ? await api.obtener(enBlanco.id) : await api.crear(NOMBRE_EN_BLANCO)
+        if (vigente) setPresupuesto(inicial)
       })
       .catch((ex: unknown) => {
         if (vigente) setAviso(ex instanceof Error ? ex.message : 'No se pudo cargar la lista de presupuestos.')
@@ -770,6 +774,7 @@ function AplicacionPresupuestos() {
           <span className="creciente" />
           <span>En línea · cálculo en la API</span>
         </footer>
+        <PieInnovatek />
 
         {medidorAbierto && presupuesto && seleccionado && (
           <MedidorCantidades
