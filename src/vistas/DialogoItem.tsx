@@ -22,57 +22,36 @@ interface Props {
   onCreado: (presupuesto: Presupuesto) => void
 }
 
-/** Convierte lo que escribe la persona («12,5» o «12.5») en un número. Es entrada, no cálculo. */
-function leerNumero(texto: string): number | null {
-  const limpio = texto.trim().replace(',', '.')
-  if (limpio === '') return null
-  const valor = Number(limpio)
-  return Number.isFinite(valor) ? valor : null
-}
-
 /**
- * Formulario para agregar un ítem a un capítulo. La actividad sale de la base de actividades (catálogo);
- * la API calcula su precio. La web solo recoge el capítulo, la actividad, la cantidad y la descripción.
+ * Formulario para agregar un ítem a un capítulo. La actividad sale del catálogo y la API calcula su precio.
+ * La cantidad no se escribe aquí: el ítem nace con cantidad 0 y se mide tocando su cantidad en la tabla, que abre el generador (RD-067).
  * Se monta al abrirse, así que arranca con los datos de cero.
  */
 export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }: Props) {
   const [capitulosBase, setCapitulosBase] = useState<CapituloCatalogo[]>([])
   const [actividades, setActividades] = useState<ActividadCatalogo[]>([])
   const [capituloDestino, setCapituloDestino] = useState(capituloInicial ?? presupuesto.capitulos[0]?.codigo ?? '')
-  const [capituloBase, setCapituloBase] = useState('')
   const [codigoAnalisis, setCodigoAnalisis] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [unidad, setUnidad] = useState('')
-  const [cantidad, setCantidad] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   useEffect(() => {
     let vigente = true
-    api
-      .catalogoCapitulos()
-      .then((lista) => {
-        if (vigente) setCapitulosBase(lista)
+    Promise.all([api.catalogoCapitulos(), api.catalogoActividades()])
+      .then(([capitulos, todas]) => {
+        if (!vigente) return
+        setCapitulosBase(capitulos)
+        setActividades(todas)
       })
       .catch((ex: unknown) => {
-        if (vigente) setError(ex instanceof Error ? ex.message : 'No se pudo cargar la base de actividades.')
+        if (vigente) setError(ex instanceof Error ? ex.message : 'No se pudo cargar el catálogo de actividades.')
       })
     return () => {
       vigente = false
     }
   }, [])
-
-  async function elegirCapituloBase(numero: string) {
-    setCapituloBase(numero)
-    setActividades([])
-    setCodigoAnalisis('')
-    if (!numero) return
-    try {
-      setActividades(await api.catalogoActividades(numero))
-    } catch (ex) {
-      setError(ex instanceof Error ? ex.message : 'No se pudieron cargar las actividades.')
-    }
-  }
 
   function elegirActividad(codigo: string) {
     setCodigoAnalisis(codigo)
@@ -83,23 +62,17 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     }
   }
 
-  const cantidadNumero = leerNumero(cantidad)
-  const valido =
-    capituloDestino !== '' &&
-    codigoAnalisis !== '' &&
-    descripcion.trim() !== '' &&
-    cantidadNumero !== null &&
-    cantidadNumero >= 0
+  const valido = capituloDestino !== '' && codigoAnalisis !== '' && descripcion.trim() !== ''
 
   async function confirmar() {
-    if (!valido || cantidadNumero === null) return
+    if (!valido) return
     setEnviando(true)
     setError(null)
     try {
       const actualizado = await api.agregarItem(presupuesto.id, capituloDestino, {
         descripcion: descripcion.trim(),
         unidad: unidad.trim() || null,
-        cantidad: cantidadNumero,
+        cantidad: 0,
         codigoAnalisis,
       })
       onCreado(actualizado)
@@ -110,6 +83,15 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
       setEnviando(false)
     }
   }
+
+  // Las actividades se agrupan por capítulo de la base cuando la actividad lo trae.
+  const grupos = new Map<string, ActividadCatalogo[]>()
+  for (const a of actividades) {
+    const clave = a.capitulo ?? ''
+    grupos.set(clave, [...(grupos.get(clave) ?? []), a])
+  }
+  const nombreGrupo = (clave: string) =>
+    clave === '' ? 'Actividades de demostración' : `${clave} · ${capitulosBase.find((c) => c.numero === clave)?.nombre ?? ''}`
 
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
@@ -128,14 +110,6 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                   <MessageBarBody>{error}</MessageBarBody>
                 </MessageBar>
               )}
-              {capitulosBase.length === 0 && (
-                <MessageBar intent="info">
-                  <MessageBarBody>
-                    No hay base de actividades cargada. Configure BaseApu__Ruta en la API para elegir una actividad.
-                  </MessageBarBody>
-                </MessageBar>
-              )}
-
               <Field label="Capítulo del presupuesto" required>
                 <select
                   aria-label="Capítulo del presupuesto"
@@ -150,33 +124,17 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 </select>
               </Field>
 
-              <Field label="Capítulo de la base de actividades" required>
-                <select
-                  aria-label="Capítulo de la base de actividades"
-                  value={capituloBase}
-                  onChange={(e) => void elegirCapituloBase(e.target.value)}
-                >
-                  <option value="">Elija un capítulo…</option>
-                  {capitulosBase.map((c) => (
-                    <option key={c.numero} value={c.numero}>
-                      {c.numero} · {c.nombre}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
               <Field label="Actividad" required>
-                <select
-                  aria-label="Actividad"
-                  value={codigoAnalisis}
-                  disabled={actividades.length === 0}
-                  onChange={(e) => elegirActividad(e.target.value)}
-                >
+                <select aria-label="Actividad" value={codigoAnalisis} onChange={(e) => elegirActividad(e.target.value)}>
                   <option value="">Elija una actividad…</option>
-                  {actividades.map((a) => (
-                    <option key={a.codigo} value={a.codigo}>
-                      {a.codigo} · {a.descripcion}
-                    </option>
+                  {[...grupos.entries()].map(([clave, lista]) => (
+                    <optgroup key={clave} label={nombreGrupo(clave)}>
+                      {lista.map((a) => (
+                        <option key={a.codigo} value={a.codigo}>
+                          {a.codigo} · {a.descripcion}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </Field>
@@ -189,9 +147,9 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 <Input value={unidad} onChange={(_, d) => setUnidad(d.value)} />
               </Field>
 
-              <Field label="Cantidad" required>
-                <Input value={cantidad} inputMode="decimal" onChange={(_, d) => setCantidad(d.value)} />
-              </Field>
+              <MessageBar intent="info">
+                <MessageBarBody>La cantidad se define después: toque la cantidad del ítem en la tabla para abrir el generador de cantidades.</MessageBarBody>
+              </MessageBar>
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={onCerrar} disabled={enviando}>

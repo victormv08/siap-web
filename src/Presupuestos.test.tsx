@@ -439,3 +439,80 @@ describe('Vista previa del presupuesto', () => {
     expect(within(cierre).getByText('Total del presupuesto')).toBeInTheDocument()
   })
 })
+
+describe('Insertar y eliminar desde los menús y la barra', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('Editar > Insertar ítem e Insertar capítulo abren sus diálogos', async () => {
+    instalarApi()
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: 'Editar' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: /Insertar capítulo/ }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('Eliminar pide confirmación, llama a DELETE y muestra el presupuesto que devuelve la API', async () => {
+    const sinItem = presupuestoDePrueba()
+    sinItem.capitulos[0].items = sinItem.capitulos[0].items.slice(1)
+    const { llamadas } = instalarApi({
+      manejador: (url, init) =>
+        url === '/api/presupuestos/P-0001/items/1.01' && init.method === 'DELETE' ? json({ ...sinItem, puedeDeshacer: true }) : undefined,
+    })
+    const usuario = await abrirApp()
+    expect(screen.getByRole('button', { name: 'Eliminar' })).toBeDisabled()
+
+    await usuario.click(screen.getByText('Localización y replanteo'))
+    await usuario.click(screen.getByRole('button', { name: 'Eliminar' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Eliminar ítem' })
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Eliminar' }))
+
+    await waitFor(() => expect(screen.queryByText('Localización y replanteo')).not.toBeInTheDocument())
+    expect(llamadas.some((l) => l.url === '/api/presupuestos/P-0001/items/1.01' && l.metodo === 'DELETE')).toBe(true)
+    expect(screen.getByRole('button', { name: /Deshacer/ })).toBeEnabled()
+  })
+})
+
+describe('Agregar ítem', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('una sola lista de actividades; no pide cantidad y la manda en 0 (se mide tocándola en la tabla)', async () => {
+    const conNuevo = presupuestoDePrueba()
+    conNuevo.capitulos[0].items = [
+      ...conNuevo.capitulos[0].items,
+      { ...conNuevo.capitulos[0].items[0], codigo: '1.03', descripcion: 'Muro nuevo', cantidad: 0, valorConsiderado: 0, valorCalculado: 0 },
+    ]
+    const { llamadas } = instalarApi({
+      manejador: (url, init) => {
+        if (url === '/api/catalogo/capitulos') return json([])
+        if (url === '/api/catalogo/actividades')
+          return json([{ codigo: 'MAM-01', capitulo: '', descripcion: 'Mampostería en bloque', unidad: 'm2', precioUnitario: 133305 }])
+        if (url === '/api/presupuestos/P-0001/capitulos/1/items' && init.method === 'POST') return json(conNuevo)
+        return undefined
+      },
+    })
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: 'Ítem' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Agregar ítem' })
+
+    expect(within(dialogo).queryByLabelText('Capítulo de la base de actividades')).not.toBeInTheDocument()
+    expect(within(dialogo).queryByLabelText(/Cantidad/)).not.toBeInTheDocument()
+    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Agregar ítem' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: /Generador de cantidades/ })).not.toBeInTheDocument()
+    const post = llamadas.find((l) => l.url === '/api/presupuestos/P-0001/capitulos/1/items')
+    expect(post?.cuerpo).toMatchObject({ codigoAnalisis: 'MAM-01', cantidad: 0 })
+  })
+})

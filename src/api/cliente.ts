@@ -322,8 +322,9 @@ export const api = {
 
   catalogoCapitulos: () => pedir<CapituloCatalogo[]>('/catalogo/capitulos'),
 
-  catalogoActividades: (capitulo: string) =>
-    pedir<ActividadCatalogo[]>(`/catalogo/actividades?capitulo=${encodeURIComponent(capitulo)}`),
+  /** Sin capítulo trae todas las actividades (las de la base y, mientras no haya base, las de demostración). */
+  catalogoActividades: (capitulo?: string) =>
+    pedir<ActividadCatalogo[]>(capitulo ? `/catalogo/actividades?capitulo=${encodeURIComponent(capitulo)}` : '/catalogo/actividades'),
 
   agregarItem: (id: string, codigoCapitulo: string, datos: NuevoItemSolicitud) =>
     pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos/${encodeURIComponent(codigoCapitulo)}/items`, {
@@ -343,6 +344,9 @@ export const api = {
   resumenDesagregado: (id: string) => pedir<ResumenDesagregado>(`/presupuestos/${encodeURIComponent(id)}/resumen-desagregado`),
 
   formulario: (id: string) => pedir<FilaFormulario[]>(`/presupuestos/${encodeURIComponent(id)}/formulario`),
+
+  eliminarItem: (id: string, codigoItem: string) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/items/${encodeURIComponent(codigoItem)}`, { method: 'DELETE' }),
 
   deshacer: (id: string) => pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/deshacer`, { method: 'POST' }),
 

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { CapituloResultado, ItemResultado, Presupuesto } from '../api/cliente'
 import { decimales, pesos } from '../formato'
 
@@ -6,7 +5,6 @@ interface Props {
   presupuesto: Presupuesto
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
-  onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
   onAbrirMedidor: (codigo: string) => void
   /** Códigos de las actividades cuya cantidad sale de una memoria de cálculo (guardadas en esta sesión). */
   conMemoria?: ReadonlySet<string>
@@ -23,16 +21,8 @@ export function IconoMedir() {
   )
 }
 
-/** Convierte lo que escribe la persona («12,5» o «12.5») en un número. Es entrada, no cálculo. */
-function leerCantidad(texto: string): number | null {
-  const limpio = texto.trim().replace(',', '.')
-  if (limpio === '') return null
-  const valor = Number(limpio)
-  return Number.isFinite(valor) ? valor : null
-}
-
 /** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
-export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, conMemoria, bloqueado }: Props) {
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, bloqueado }: Props) {
   return (
     <table className="g" aria-label="Ítems del presupuesto">
       <thead>
@@ -53,7 +43,6 @@ export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarIte
             capitulo={capitulo}
             itemSeleccionado={itemSeleccionado}
             onSeleccionarItem={onSeleccionarItem}
-            onCambiarCantidad={onCambiarCantidad}
             onAbrirMedidor={onAbrirMedidor}
             conMemoria={conMemoria}
             bloqueado={bloqueado}
@@ -77,13 +66,12 @@ interface FilasProps {
   capitulo: CapituloResultado
   itemSeleccionado: string | null
   onSeleccionarItem: (codigo: string) => void
-  onCambiarCantidad: (item: ItemResultado, cantidad: number) => Promise<void>
   onAbrirMedidor: (codigo: string) => void
   conMemoria?: ReadonlySet<string>
   bloqueado: boolean
 }
 
-function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onCambiarCantidad, onAbrirMedidor, conMemoria, bloqueado }: FilasProps) {
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, bloqueado }: FilasProps) {
   return (
     <>
       <tr className="cap" id={`capitulo-${capitulo.codigo}`}>
@@ -102,7 +90,6 @@ function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, 
           seleccionado={itemSeleccionado === item.codigo}
           onAbrirMedidor={() => onAbrirMedidor(item.codigo)}
           onSeleccionar={() => onSeleccionarItem(item.codigo)}
-          onCambiarCantidad={(cantidad) => onCambiarCantidad(item, cantidad)}
           desdeMemoria={item.tieneMemoria === true || (conMemoria?.has(item.codigo) ?? false)}
           bloqueado={bloqueado}
         />
@@ -125,23 +112,13 @@ interface FilaProps {
   seleccionado: boolean
   onSeleccionar: () => void
   onAbrirMedidor: () => void
-  onCambiarCantidad: (cantidad: number) => Promise<void>
-  /** La cantidad viene de una memoria de cálculo: no se edita a mano (el servidor tampoco lo permite). */
+  /** La cantidad viene de una memoria de cálculo (se muestra la etiqueta «memoria»). */
   desdeMemoria: boolean
   bloqueado: boolean
 }
 
-function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad, onAbrirMedidor, desdeMemoria, bloqueado }: FilaProps) {
-  const [borrador, setBorrador] = useState<string | null>(null)
-  const valorMostrado = borrador ?? decimales(item.cantidad)
-
-  async function confirmar() {
-    if (borrador === null) return
-    const cantidad = leerCantidad(borrador)
-    setBorrador(null)
-    if (cantidad === null || cantidad === item.cantidad) return
-    await onCambiarCantidad(cantidad)
-  }
+function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, desdeMemoria, bloqueado }: FilaProps) {
+  const valorMostrado = decimales(item.cantidad)
 
   const clases = [item.excluido ? 'excl' : '', seleccionado ? 'seleccionada' : ''].filter(Boolean).join(' ')
 
@@ -159,18 +136,26 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onCambiarCantidad
       </td>
       <td>{item.unidad}</td>
       <td className={desdeMemoria ? 'n con-memoria' : 'n'}>
+        {/* La cantidad no se escribe a mano: tocarla abre el generador de cantidades (RD-067). */}
         <input
           aria-label={`Cantidad del ítem ${item.codigo}`}
           value={valorMostrado}
-          disabled={bloqueado || item.excluido || desdeMemoria}
-          title={desdeMemoria ? 'La cantidad viene de la memoria de cálculo. Edítela en el generador de cantidades.' : undefined}
-          onClick={(evento) => evento.stopPropagation()}
+          readOnly
+          disabled={bloqueado || item.excluido}
+          title="Toque para medir la cantidad en el generador de cantidades"
+          style={{ cursor: 'pointer' }}
+          onClick={(evento) => {
+            evento.stopPropagation()
+            onSeleccionar()
+            onAbrirMedidor()
+          }}
           onDoubleClick={(evento) => evento.stopPropagation()}
-          onChange={(evento) => setBorrador(evento.target.value)}
-          onBlur={() => void confirmar()}
           onKeyDown={(evento) => {
-            if (evento.key === 'Enter') void confirmar()
-            if (evento.key === 'Escape') setBorrador(null)
+            if (evento.key === 'Enter' || evento.key === ' ') {
+              evento.preventDefault()
+              onSeleccionar()
+              onAbrirMedidor()
+            }
           }}
         />
         <button

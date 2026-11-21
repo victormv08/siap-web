@@ -403,7 +403,7 @@ describe('Medir cantidades desde las hojas', () => {
 
     const cantidad = screen.getByLabelText('Cantidad del ítem 1.01')
 
-    expect(cantidad).toBeDisabled()
+    expect(cantidad).toHaveAttribute('readonly')
     expect(screen.getByText('memoria')).toBeInTheDocument()
     expect(screen.getByLabelText('Cantidad del ítem 1.02')).toBeEnabled()
   })
@@ -427,7 +427,7 @@ describe('Medir cantidades desde las hojas', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByText('memoria')).toBeInTheDocument()
-    expect(screen.getByLabelText('Cantidad del ítem 1.01')).toBeDisabled()
+    expect(screen.getByLabelText('Cantidad del ítem 1.01')).toHaveAttribute('readonly')
   })
 
   it('la hoja Cantidades tiene un botón «Medir» por actividad y el aviso dice cómo abrirlo', async () => {

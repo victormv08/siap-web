@@ -25,6 +25,7 @@ import { VistaPrevia } from './vistas/VistaPrevia'
 import { PieInnovatek } from './vistas/PieInnovatek'
 import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
+import { DialogoEliminar } from './vistas/DialogoEliminar'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
 import { MedidorCantidades } from './vistas/MedidorCantidades'
 import { ProveedorSesion } from './auth/ProveedorSesion'
@@ -141,6 +142,7 @@ function AplicacionPresupuestos() {
   const [mostrarApu, setMostrarApu] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
+  const [aEliminar, setAEliminar] = useState<ItemResultado | null>(null)
   const [panelCapitulos, setPanelCapitulos] = useState(true)
   const [barraVisible, setBarraVisible] = useState(true)
   const [tema, setTema] = useState<'oscuro' | 'claro'>('claro')
@@ -191,17 +193,6 @@ function AplicacionPresupuestos() {
     } catch (ex) {
       setAviso(ex instanceof Error ? ex.message : 'La API no pudo guardar el cambio.')
     }
-  }
-
-  async function cambiarCantidad(item: ItemResultado, cantidad: number) {
-    if (!presupuesto) return
-    await aplicar(() =>
-      api.actualizarItem(presupuesto.id, item.codigo, {
-        cantidad,
-        excluido: item.excluido,
-        motivoExclusion: item.motivoExclusion,
-      }),
-    )
   }
 
   async function excluir(motivo: string) {
@@ -278,6 +269,15 @@ function AplicacionPresupuestos() {
     return () => window.removeEventListener('keydown', alPresionar)
   }, [itemSel, presupuesto])
 
+  /** Quita el ítem pendiente de confirmar. La API devuelve el presupuesto ya recalculado. */
+  async function eliminar() {
+    if (!presupuesto || !aEliminar) return
+    const item = aEliminar
+    await aplicar(() => api.eliminarItem(presupuesto.id, item.codigo))
+    setAEliminar(null)
+    setItemSel(null)
+  }
+
   /** Deshace o rehace el último cambio en la API; ella devuelve el presupuesto ya calculado. */
   async function deshacerORehacer(accion: 'deshacer' | 'rehacer') {
     if (!presupuesto) return
@@ -285,6 +285,32 @@ function AplicacionPresupuestos() {
     if (!puede) return
     await aplicar(() => (accion === 'deshacer' ? api.deshacer(presupuesto.id) : api.rehacer(presupuesto.id)))
   }
+
+  // Supr elimina el ítem seleccionado y Ctrl+Enter inserta un ítem, salvo mientras se escribe en un campo o hay un diálogo abierto.
+  useEffect(() => {
+    function alPresionar(evento: KeyboardEvent) {
+      const supr = evento.key === 'Delete' && !evento.ctrlKey && !evento.metaKey && !evento.altKey
+      const insertar = evento.key === 'Enter' && (evento.ctrlKey || evento.metaKey)
+      if (!supr && !insertar) return
+      const objetivo = evento.target
+      if (
+        objetivo instanceof HTMLElement &&
+        (objetivo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(objetivo.tagName))
+      ) {
+        return
+      }
+      if (hoja !== 'cd' || document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
+      if (supr && seleccionado) {
+        evento.preventDefault()
+        setAEliminar(seleccionado)
+      } else if (insertar && presupuesto) {
+        evento.preventDefault()
+        setItemAbierto(true)
+      }
+    }
+    window.addEventListener('keydown', alPresionar)
+    return () => window.removeEventListener('keydown', alPresionar)
+  })
 
   // Ctrl+Z deshace y Ctrl+Y (o Ctrl+Mayús+Z) rehace, salvo mientras se escribe en un campo: ahí el navegador conserva el suyo.
   useEffect(() => {
@@ -374,7 +400,7 @@ function AplicacionPresupuestos() {
     'sep',
     { etiqueta: 'Ítem', icono: I.item, onClick: () => setItemAbierto(true) },
     { etiqueta: 'Capítulo', icono: I.capitulo, onClick: () => setCapituloAbierto(true) },
-    { etiqueta: 'Eliminar', icono: I.eliminar, deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Eliminar', icono: I.eliminar, deshabilitado: !seleccionado, motivo: 'Selecciona un ítem', onClick: () => seleccionado && setAEliminar(seleccionado) },
     {
       etiqueta: seleccionado?.excluido ? 'Incluir' : 'Excluir',
       icono: seleccionado?.excluido ? I.incluir : I.excluir,
@@ -481,14 +507,20 @@ function AplicacionPresupuestos() {
                   Rehacer
                 </MenuItem>
                 <MenuDivider />
-                <MenuItem icon={I.item} secondaryContent="Ctrl+Enter" disabled title={PENDIENTE_API}>
+                <MenuItem icon={I.item} secondaryContent="Ctrl+Enter" disabled={!presupuesto} onClick={() => setItemAbierto(true)}>
                   Insertar ítem
                 </MenuItem>
-                <MenuItem icon={I.capitulo} disabled title={PENDIENTE_API}>
+                <MenuItem icon={I.capitulo} disabled={!presupuesto} onClick={() => setCapituloAbierto(true)}>
                   Insertar capítulo
                 </MenuItem>
-                <MenuItem icon={I.eliminar} secondaryContent="Supr" disabled title={PENDIENTE_API}>
-                  Eliminar fila
+                <MenuItem
+                  icon={I.eliminar}
+                  secondaryContent="Supr"
+                  disabled={!seleccionado}
+                  title={seleccionado ? undefined : 'Selecciona un ítem'}
+                  onClick={() => seleccionado && setAEliminar(seleccionado)}
+                >
+                  Eliminar ítem
                 </MenuItem>
                 <MenuDivider />
                 <MenuItem
@@ -757,7 +789,6 @@ function AplicacionPresupuestos() {
                       onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
                       conMemoria={conMemoria}
                       onSeleccionarItem={setItemSel}
-                      onCambiarCantidad={cambiarCantidad}
                       bloqueado={false}
                     />
                   </div>
@@ -864,6 +895,12 @@ function AplicacionPresupuestos() {
             }}
           />
         )}
+        <DialogoEliminar
+          abierto={aEliminar !== null}
+          descripcion={aEliminar?.descripcion ?? ''}
+          onCancelar={() => setAEliminar(null)}
+          onConfirmar={eliminar}
+        />
         <DialogoExcluir
           abierto={aExcluir !== null}
           descripcion={aExcluir?.descripcion ?? ''}

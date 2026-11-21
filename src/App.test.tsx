@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -144,36 +144,17 @@ describe('SIAP web', () => {
     expect(screen.getByText('no suma')).toBeInTheDocument()
   })
 
-  it('al cambiar la cantidad envía el cambio a la API y muestra el valor que ella devuelve', async () => {
-    const { llamadas } = apiSimulada((url, init) => {
-      if (url === '/api/presupuestos/P-0001/items/1.01' && init.method === 'PUT') {
-        return respuestaJson(
-          presupuesto({
-            costoDirecto: 777777,
-            total: 777777,
-            capitulos: [
-              {
-                ...presupuesto().capitulos[0],
-                subtotal: 777777,
-                items: [{ ...presupuesto().capitulos[0].items[0], cantidad: 2, valorConsiderado: 777777, valorCalculado: 777777 }, presupuesto().capitulos[0].items[1]],
-              },
-            ],
-          }),
-        )
-      }
-      return undefined
-    })
+  it('al tocar la cantidad se abre el generador de cantidades y no se escribe a mano', async () => {
+    const { llamadas } = apiSimulada()
     const usuario = userEvent.setup()
     render(<App />)
 
     const cantidad = await screen.findByRole('textbox', { name: 'Cantidad del ítem 1.01' })
-    await usuario.clear(cantidad)
-    await usuario.type(cantidad, '2{Enter}')
+    expect(cantidad).toHaveAttribute('readonly')
+    await usuario.click(cantidad)
 
-    // El valor nuevo aparece en el ítem, en el subtotal del capítulo y en los totales: basta con que esté.
-    await waitFor(() => expect(screen.getAllByText('$ 777.777').length).toBeGreaterThan(0))
-    const put = llamadas.find((l) => l.metodo === 'PUT' && l.url.endsWith('/items/1.01'))
-    expect(put?.cuerpo).toEqual({ cantidad: 2, excluido: false, motivoExclusion: null })
+    expect(await screen.findByRole('dialog', { name: /Generador de cantidades · 1\.01/ })).toBeInTheDocument()
+    expect(llamadas.some((l) => l.metodo === 'PUT' && l.url.endsWith('/items/1.01'))).toBe(false)
   })
 
   it('excluir un ítem exige un motivo antes de enviar', async () => {
