@@ -325,3 +325,61 @@ describe('Pie de Innovatek en la aplicación', () => {
     expect(pie).toHaveTextContent('Todos los derechos reservados')
   })
 })
+
+describe('Deshacer y rehacer', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  const conCambio = { ...presupuestoDePrueba(), puedeDeshacer: true, puedeRehacer: false }
+  const deshecho = { ...presupuestoDePrueba(), nombre: 'Obra deshecha', puedeDeshacer: false, puedeRehacer: true }
+
+  it('sin cambios, Deshacer y Rehacer están deshabilitados', async () => {
+    instalarApi()
+    await abrirApp()
+
+    expect(screen.getByRole('button', { name: /Deshacer/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Rehacer/ })).toBeDisabled()
+  })
+
+  it('Deshacer llama a la API y muestra el presupuesto que ella devuelve; luego Rehacer queda habilitado', async () => {
+    const { llamadas } = instalarApi({
+      presupuesto: conCambio,
+      manejador: (url, init) =>
+        url === '/api/presupuestos/P-0001/deshacer' && init.method === 'POST' ? json(deshecho) : undefined,
+    })
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: /Deshacer/ }))
+
+    expect(await screen.findByTitle('Obra deshecha')).toBeInTheDocument()
+    expect(llamadas.some((l) => l.url === '/api/presupuestos/P-0001/deshacer' && l.metodo === 'POST')).toBe(true)
+    expect(screen.getByRole('button', { name: /Deshacer/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Rehacer/ })).toBeEnabled()
+  })
+
+  it('Ctrl+Z deshace y Ctrl+Y rehace', async () => {
+    const { llamadas } = instalarApi({
+      presupuesto: conCambio,
+      manejador: (url, init) => {
+        if (init.method !== 'POST') return undefined
+        if (url === '/api/presupuestos/P-0001/deshacer') return json(deshecho)
+        if (url === '/api/presupuestos/P-0001/rehacer') return json(conCambio)
+        return undefined
+      },
+    })
+    const usuario = await abrirApp()
+
+    await usuario.keyboard('{Control>}z{/Control}')
+    await waitFor(() => expect(screen.getByRole('button', { name: /Rehacer/ })).toBeEnabled())
+    await usuario.keyboard('{Control>}y{/Control}')
+    await waitFor(() => expect(screen.getByRole('button', { name: /Deshacer/ })).toBeEnabled())
+
+    expect(llamadas.map((l) => l.url).filter((u) => u.endsWith('/deshacer') || u.endsWith('/rehacer'))).toEqual([
+      '/api/presupuestos/P-0001/deshacer',
+      '/api/presupuestos/P-0001/rehacer',
+    ])
+  })
+})

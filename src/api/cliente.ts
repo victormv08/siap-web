@@ -58,6 +58,9 @@ export interface Presupuesto {
     decimalesCostoAnalisis: number
     decimalesCierre: number
   }
+  /** Si hay un cambio que deshacer o rehacer. Opcional: solo lo manda una API que lo informe. */
+  puedeDeshacer?: boolean
+  puedeRehacer?: boolean
 }
 
 export interface ResumenPresupuesto {
@@ -340,6 +343,10 @@ export const api = {
   resumenDesagregado: (id: string) => pedir<ResumenDesagregado>(`/presupuestos/${encodeURIComponent(id)}/resumen-desagregado`),
 
   formulario: (id: string) => pedir<FilaFormulario[]>(`/presupuestos/${encodeURIComponent(id)}/formulario`),
+
+  deshacer: (id: string) => pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/deshacer`, { method: 'POST' }),
+
+  rehacer: (id: string) => pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/rehacer`, { method: 'POST' }),
 
   historial: (id: string) => pedir<EntradaHistorial[]>(`/presupuestos/${encodeURIComponent(id)}/historial`),
 

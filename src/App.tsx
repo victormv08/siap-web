@@ -274,6 +274,37 @@ function AplicacionPresupuestos() {
     return () => window.removeEventListener('keydown', alPresionar)
   }, [itemSel, presupuesto])
 
+  /** Deshace o rehace el último cambio en la API; ella devuelve el presupuesto ya calculado. */
+  async function deshacerORehacer(accion: 'deshacer' | 'rehacer') {
+    if (!presupuesto) return
+    const puede = accion === 'deshacer' ? presupuesto.puedeDeshacer : presupuesto.puedeRehacer
+    if (!puede) return
+    await aplicar(() => (accion === 'deshacer' ? api.deshacer(presupuesto.id) : api.rehacer(presupuesto.id)))
+  }
+
+  // Ctrl+Z deshace y Ctrl+Y (o Ctrl+Mayús+Z) rehace, salvo mientras se escribe en un campo: ahí el navegador conserva el suyo.
+  useEffect(() => {
+    function alPresionar(evento: KeyboardEvent) {
+      if (!(evento.ctrlKey || evento.metaKey) || evento.altKey) return
+      const tecla = evento.key.toLowerCase()
+      const rehacer = tecla === 'y' || (tecla === 'z' && evento.shiftKey)
+      const deshacer = tecla === 'z' && !evento.shiftKey
+      if (!rehacer && !deshacer) return
+      const objetivo = evento.target
+      if (
+        objetivo instanceof HTMLElement &&
+        (objetivo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName))
+      ) {
+        return
+      }
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      evento.preventDefault()
+      void deshacerORehacer(rehacer ? 'rehacer' : 'deshacer')
+    }
+    window.addEventListener('keydown', alPresionar)
+    return () => window.removeEventListener('keydown', alPresionar)
+  })
+
   /** Vuelve a Costos directos. La selección de capítulo y actividad no se toca, así que se conserva. */
   function irAInicio() {
     setHoja('cd')
@@ -334,8 +365,8 @@ function AplicacionPresupuestos() {
     { etiqueta: 'Abrir', icono: I.abrir, onClick: () => setAbrirAbierto(true) },
     { etiqueta: 'Guardar', icono: I.guardar, deshabilitado: true, motivo: 'Cada cambio se guarda en la API al confirmarlo' },
     'sep',
-    { etiqueta: 'Deshacer', icono: I.deshacer, tecla: 'Ctrl+Z', deshabilitado: true, motivo: PENDIENTE_API },
-    { etiqueta: 'Rehacer', icono: I.rehacer, tecla: 'Ctrl+Y', deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Deshacer', icono: I.deshacer, tecla: 'Ctrl+Z', deshabilitado: !presupuesto?.puedeDeshacer, motivo: 'No hay ningún cambio que deshacer', onClick: () => void deshacerORehacer('deshacer') },
+    { etiqueta: 'Rehacer', icono: I.rehacer, tecla: 'Ctrl+Y', deshabilitado: !presupuesto?.puedeRehacer, motivo: 'No hay ningún cambio que rehacer', onClick: () => void deshacerORehacer('rehacer') },
     'sep',
     { etiqueta: 'Ítem', icono: I.item, onClick: () => setItemAbierto(true) },
     { etiqueta: 'Capítulo', icono: I.capitulo, onClick: () => setCapituloAbierto(true) },
@@ -431,10 +462,22 @@ function AplicacionPresupuestos() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem icon={I.deshacer} secondaryContent="Ctrl+Z" disabled title={PENDIENTE_API}>
+                <MenuItem
+                  icon={I.deshacer}
+                  secondaryContent="Ctrl+Z"
+                  disabled={!presupuesto?.puedeDeshacer}
+                  title={presupuesto?.puedeDeshacer ? undefined : 'No hay ningún cambio que deshacer'}
+                  onClick={() => void deshacerORehacer('deshacer')}
+                >
                   Deshacer
                 </MenuItem>
-                <MenuItem icon={I.rehacer} secondaryContent="Ctrl+Y" disabled title={PENDIENTE_API}>
+                <MenuItem
+                  icon={I.rehacer}
+                  secondaryContent="Ctrl+Y"
+                  disabled={!presupuesto?.puedeRehacer}
+                  title={presupuesto?.puedeRehacer ? undefined : 'No hay ningún cambio que rehacer'}
+                  onClick={() => void deshacerORehacer('rehacer')}
+                >
                   Rehacer
                 </MenuItem>
                 <MenuDivider />
@@ -660,7 +703,7 @@ function AplicacionPresupuestos() {
 
         {aviso ? (
           <div className="siap-aviso">
-            <MessageBar intent="warning">
+            <MessageBar intent="info">
               <MessageBarBody>{aviso}</MessageBarBody>
             </MessageBar>
           </div>
