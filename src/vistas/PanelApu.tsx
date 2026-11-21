@@ -44,10 +44,12 @@ interface Props {
   codigoAnalisis: string
   codigoItem: string
   onGuardado: (presupuesto: Presupuesto) => void
+  /** En la hoja APU el análisis ocupa todo el espacio, sin el tope del panel inferior. */
+  completo?: boolean
 }
 
 /** Análisis de precio unitario del ítem, tal como lo ve este presupuesto. Se puede editar aquí mismo. */
-export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado }: Props) {
+export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado, completo = false }: Props) {
   const e = estilos()
   const [analisis, setAnalisis] = useState<AnalisisEditable | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +72,7 @@ export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado
   }, [presupuestoId, codigoAnalisis])
 
   return (
-    <section className={e.panel} aria-label={`Análisis de precio del ítem ${codigoItem}`}>
+    <section className={e.panel} style={completo ? { maxHeight: 'none', borderTop: 'none' } : undefined} aria-label={`Análisis de precio del ítem ${codigoItem}`}>
       <div className={e.cabecera}>
         <Text weight="semibold">APU {codigoAnalisis}</Text>
         {analisis && <Text>{analisis.descripcion} · por {analisis.unidad}</Text>}

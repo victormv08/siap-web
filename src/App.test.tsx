@@ -169,7 +169,8 @@ describe('SIAP web', () => {
     await usuario.clear(cantidad)
     await usuario.type(cantidad, '2{Enter}')
 
-    await waitFor(() => expect(screen.getByText('$ 777.777')).toBeInTheDocument())
+    // El valor nuevo aparece en el ítem, en el subtotal del capítulo y en los totales: basta con que esté.
+    await waitFor(() => expect(screen.getAllByText('$ 777.777').length).toBeGreaterThan(0))
     const put = llamadas.find((l) => l.metodo === 'PUT' && l.url.endsWith('/items/1.01'))
     expect(put?.cuerpo).toEqual({ cantidad: 2, excluido: false, motivoExclusion: null })
   })
@@ -199,7 +200,8 @@ describe('SIAP web', () => {
 
     await screen.findByText('Obra de prueba')
     await usuario.click(screen.getByRole('button', { name: 'Hojas' }))
-    await usuario.click(await screen.findByRole('menuitem', { name: 'Cantidades' }))
+    // Cantidades ya está conectada a la API; el Gantt sigue pendiente (depende de R-016).
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Diagrama de Gantt' }))
 
     expect(screen.getByText('Esta hoja todavía no está conectada a la API.')).toBeInTheDocument()
   })

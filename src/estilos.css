@@ -741,3 +741,590 @@ button.siap-marca:focus-visible,
 .siap-volver:hover {
   background: var(--menu-hover);
 }
+
+/* Nombre del presupuesto en el panel de capítulos: una línea, con elipsis si es largo. */
+.siap-arbol .raiz {
+  min-width: 0;
+}
+
+.nombre-presupuesto {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Diálogo «Abrir presupuesto». */
+.lista-presupuestos {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--grid);
+  border-radius: 4px;
+}
+
+.presupuesto-opcion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--grid);
+  cursor: pointer;
+  background: var(--paper);
+  color: var(--text);
+}
+
+.presupuesto-opcion:last-child {
+  border-bottom: 0;
+}
+
+.presupuesto-opcion:hover {
+  background: var(--menu-hover);
+}
+
+.presupuesto-opcion.actual {
+  background: var(--sel);
+  box-shadow: inset 3px 0 0 var(--sel-line);
+}
+
+.presupuesto-opcion:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.presupuesto-nombre {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.presupuesto-cifras {
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Página común de las hojas: lienzo con desplazamiento propio y página centrada. */
+.hoja-lienzo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--paper);
+}
+
+.hoja-pagina {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hoja-pagina.ancha {
+  max-width: 1480px;
+}
+
+.hoja-encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hoja-titulo {
+  margin: 0;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.hoja-descripcion {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.hoja-pagina table.g {
+  margin-top: 0;
+}
+
+/* Dos tarjetas lado a lado desde 900 px; una columna por debajo. */
+.hoja-columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .hoja-columnas {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+
+.tarjeta-hoja {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--grid);
+  border-radius: 10px;
+  background: var(--paper-2);
+}
+
+.tarjeta-hoja h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.tarjeta-nota {
+  margin: -8px 0 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.tarjeta-pie {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Porcentajes del cierre: rejilla 2x2 de celdas iguales; la fila de ayuda tiene la misma altura en todas. */
+.aiu-rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .aiu-rejilla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.aiu-celda {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.aiu-celda .fui-Field__hint {
+  min-height: 32px;
+}
+
+.aiu-campo {
+  width: 100%;
+  min-height: 36px;
+}
+
+.aiu-campo input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Resumen del cierre y tabla del presupuesto total. */
+.cierre-resumen,
+.tabla-total {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.cierre-resumen th,
+.tabla-total th {
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--grid);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.cierre-resumen td,
+.tabla-total td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--grid);
+  color: var(--text);
+  vertical-align: top;
+}
+
+.cierre-resumen th.n,
+.cierre-resumen td.n,
+.tabla-total th.n,
+.tabla-total td.n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla-total td.formula {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.cierre-resumen tr.total td,
+.tabla-total tr.total td {
+  border-top: 2px solid var(--yel);
+  border-bottom: 0;
+  background: var(--head);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tabla-envoltura {
+  overflow-x: auto;
+}
+
+.tabla-envoltura .tabla-total {
+  min-width: 640px;
+}
+
+/* Generador de cantidades (rediseño): encabezado, control segmentado, tabla y barra inferior. */
+.gen-actividad {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.gen-codigo {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-nombre {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gen-controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  margin: 4px 0 12px;
+}
+
+.gen-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gen-ancho {
+  flex: 1 1 320px;
+}
+
+.gen-etiqueta {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Control segmentado: dos botones con role radio, que se manejan con las flechas. */
+.segmentado {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--grid);
+  border-radius: 8px;
+  background: var(--head);
+}
+
+.segmentado button {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmentado button[aria-checked='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--sel-line);
+}
+
+.segmentado button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.segmentado button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Tabla de entrada: anchos fijos, sin barra horizontal desde ~1100 px; por debajo, el desplazamiento queda
+   dentro del contenedor y las columnas de número de fila, tipo, observación y valor quedan a la vista. */
+.gen-tabla-contenedor {
+  overflow-x: auto;
+  margin-top: 8px;
+  border: 1px solid var(--grid);
+  border-radius: 8px;
+}
+
+table.g.medidor {
+  width: 100%;
+  min-width: 1000px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table.g.medidor.acero {
+  min-width: 900px;
+}
+
+.g.medidor td {
+  height: 40px;
+  padding: 4px;
+  border-right: 0;
+  overflow: visible;
+}
+
+.g.medidor tbody tr td {
+  background: var(--paper);
+}
+
+.g.medidor tbody tr:nth-child(even) td {
+  background: var(--paper-2);
+}
+
+.g.medidor th.n,
+.g.medidor td.n {
+  text-align: right;
+}
+
+.g.medidor td.num-fila {
+  padding: 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.g.medidor td.valor {
+  padding-right: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.g.medidor td input,
+.g.medidor td select {
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--input);
+}
+
+.g.medidor td input:focus-visible,
+.g.medidor td select:focus-visible {
+  border-color: var(--accent);
+}
+
+.g.medidor tbody td.solo-lectura {
+  padding: 4px;
+}
+
+.campo-bloqueado {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px dashed var(--grid);
+  border-radius: 6px;
+  background: var(--head);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.g.medidor .btn-celda {
+  height: 32px;
+  border-radius: 6px;
+}
+
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.btn-icono:hover {
+  background: var(--menu-hover);
+  color: var(--text);
+}
+
+.btn-icono:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Columnas que no se pierden al desplazar: número de fila, tipo, observación, valor y acciones. */
+.g.medidor .fija-num,
+.g.medidor .fija-tipo,
+.g.medidor .fija-obs,
+.g.medidor .fija-valor,
+.g.medidor .fija-acc {
+  position: sticky;
+  z-index: 2;
+}
+
+.g.medidor th.fija-num,
+.g.medidor th.fija-tipo,
+.g.medidor th.fija-obs,
+.g.medidor th.fija-valor,
+.g.medidor th.fija-acc {
+  z-index: 3;
+}
+
+.g.medidor.generico .fija-num,
+.g.medidor.acero .fija-num {
+  left: 0;
+}
+
+.g.medidor.generico .fija-tipo {
+  left: 28px;
+}
+
+.g.medidor.generico .fija-obs {
+  left: 120px;
+}
+
+.g.medidor.acero .fija-obs {
+  left: 28px;
+}
+
+.g.medidor .fija-valor {
+  right: 36px;
+}
+
+.g.medidor .fija-acc {
+  right: 0;
+}
+
+.gen-bajo-tabla {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.gen-leyenda {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.gen-detalle {
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--grid);
+  border-radius: 8px;
+}
+
+.gen-detalle summary {
+  padding: 8px 0;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gen-detalle summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gen-detalle-cuerpo {
+  padding-bottom: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.gen-detalle-cuerpo p {
+  margin: 0 0 6px;
+}
+
+/* Barra inferior fija dentro del diálogo: total a la izquierda; Cancelar y Guardar a la derecha. */
+.gen-barra {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid);
+  background: var(--colorNeutralBackground1);
+}
+
+.gen-total {
+  margin-right: auto;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  .gen-barra {
+    flex-wrap: wrap;
+  }
+
+  .gen-total {
+    flex-basis: 100%;
+  }
+}

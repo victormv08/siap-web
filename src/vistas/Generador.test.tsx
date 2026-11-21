@@ -51,13 +51,13 @@ describe('Generador de cantidades', () => {
   it('abre en Genérico si la unidad no es kg y en Acero si lo es', async () => {
     instalarApi()
     const { dialogo } = await abrirGenerador('Localización y replanteo')
-    expect(within(dialogo).getByLabelText('Tipo de generador')).toHaveValue('Generico')
+    expect(within(dialogo).getByRole('radio', { name: 'Genérico' })).toBeChecked()
     expect(within(dialogo).getByRole('columnheader', { name: 'Largo' })).toBeInTheDocument()
     cleanup()
 
     instalarApi()
     const acero = await abrirGenerador('Acero de refuerzo para zapatas')
-    expect(within(acero.dialogo).getByLabelText('Tipo de generador')).toHaveValue('Acero')
+    expect(within(acero.dialogo).getByRole('radio', { name: 'Acero de refuerzo' })).toBeChecked()
     expect(within(acero.dialogo).getByRole('columnheader', { name: 'Peso kg/m' })).toBeInTheDocument()
   })
 
@@ -66,7 +66,7 @@ describe('Generador de cantidades', () => {
     const { usuario, dialogo } = await abrirGenerador()
     expect(within(dialogo).getByText(/Cantidad del ítem: .* m2/)).toBeInTheDocument()
 
-    await usuario.selectOptions(within(dialogo).getByLabelText('Tipo de generador'), 'Acero')
+    await usuario.click(within(dialogo).getByRole('radio', { name: 'Acero de refuerzo' }))
 
     expect(within(dialogo).queryByRole('columnheader', { name: 'Largo' })).not.toBeInTheDocument()
     expect(within(dialogo).getByRole('columnheader', { name: 'Esquema' })).toBeInTheDocument()
@@ -88,6 +88,76 @@ describe('Generador de cantidades', () => {
     expect(cuerpo.generador).toBe('Generico')
     expect(cuerpo.filas).toHaveLength(1)
     expect(cuerpo.filas[0]).toMatchObject({ tipo: 'Fila', largo: 3, ancho: null, alto: null, piezas: null, figura: null })
+  })
+
+  it('el tipo de generador es un control segmentado que cambia con las flechas', async () => {
+    instalarApi()
+    const { usuario, dialogo } = await abrirGenerador()
+    const grupo = within(dialogo).getByRole('radiogroup', { name: 'Tipo de generador' })
+    const generico = within(grupo).getByRole('radio', { name: 'Genérico' })
+    const acero = within(grupo).getByRole('radio', { name: 'Acero de refuerzo' })
+    expect(generico).toBeChecked()
+    expect(acero).not.toBeChecked()
+
+    generico.focus()
+    await usuario.keyboard('{ArrowRight}')
+
+    expect(acero).toBeChecked()
+    expect(acero).toHaveFocus()
+    expect(within(dialogo).getByRole('columnheader', { name: 'Peso kg/m' })).toBeInTheDocument()
+
+    await usuario.keyboard('{ArrowLeft}')
+
+    expect(generico).toBeChecked()
+    expect(generico).toHaveFocus()
+  })
+
+  it('el encabezado muestra el código, el nombre de la actividad y la unidad como insignia', async () => {
+    instalarApi()
+    const { dialogo } = await abrirGenerador()
+
+    expect(within(dialogo).getByTitle('Unidad de la actividad')).toHaveTextContent('m2')
+    expect(within(dialogo).getByText('Localización y replanteo')).toBeInTheDocument()
+  })
+
+  it('cada fila tiene su número y un botón con icono para borrarla', async () => {
+    instalarApi()
+    const { usuario, dialogo } = await abrirGenerador()
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar fila' }))
+    expect(within(dialogo).getByLabelText('largo de la fila 2')).toBeInTheDocument()
+    await usuario.type(within(dialogo).getByLabelText('largo de la fila 2'), '7')
+
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Quitar la fila 1' }))
+
+    // Queda una sola fila, y es la que tenía el 7.
+    expect(within(dialogo).queryByLabelText('largo de la fila 2')).not.toBeInTheDocument()
+    expect(within(dialogo).getByLabelText('largo de la fila 1')).toHaveValue('7')
+  })
+
+  it('la barra inferior reúne el total con Cancelar y Guardar', async () => {
+    instalarApi()
+    const { dialogo } = await abrirGenerador()
+
+    const total = within(dialogo).getByText(/Cantidad del ítem: .* m2/)
+    const barra = total.parentElement as HTMLElement
+
+    expect(barra).toHaveClass('gen-barra')
+    expect(within(barra).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
+    expect(within(barra).getByRole('button', { name: 'Guardar memoria' })).toBeInTheDocument()
+  })
+
+  it('el detalle del cálculo va en un bloque plegable «¿Cómo se calcula?», cerrado al abrir', async () => {
+    instalarApi()
+    const { usuario, dialogo } = await abrirGenerador()
+    const resumen = within(dialogo).getByText('¿Cómo se calcula?')
+    const detalle = resumen.closest('details') as HTMLDetailsElement
+
+    expect(detalle).not.toHaveAttribute('open')
+    expect(within(detalle).getByText(/Un factor vacío cuenta como 1/)).toBeInTheDocument()
+
+    await usuario.click(resumen)
+
+    expect(detalle).toHaveAttribute('open')
   })
 
   it('manda la observación general y las columnas nuevas en el PUT, y las filas sin observación la heredan en pantalla', async () => {

@@ -21,11 +21,14 @@ import { pesos } from './formato'
 import { CostosDirectos } from './vistas/CostosDirectos'
 import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
 import { PanelApu } from './vistas/PanelApu'
+import { HojaApu } from './vistas/HojaApu'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
 import { MedidorCantidades } from './vistas/MedidorCantidades'
 import { ProveedorSesion } from './auth/ProveedorSesion'
 import { GuardianSesion } from './auth/GuardianSesion'
 import { useSesion } from './auth/contextoSesion'
+import { DialogoAbrir } from './vistas/DialogoAbrir'
+import { DialogoNuevo } from './vistas/DialogoNuevo'
 import { DialogoCapitulo } from './vistas/DialogoCapitulo'
 import { DialogoItem } from './vistas/DialogoItem'
 import { Cantidades } from './vistas/Cantidades'
@@ -51,11 +54,6 @@ const HOJAS: [Hoja, string, JSX.Element][] = [
 
 /** Por qué cada hoja aún no tiene datos de la API. Sin cifras inventadas. */
 const PENDIENTES: Partial<Record<Hoja, { nombre: string; motivo: string }>> = {
-  apu: {
-    nombre: 'APU',
-    motivo:
-      'Por ahora el análisis de cada ítem se ve en el panel inferior de Costos directos. La edición de APU todavía no tiene endpoints de escritura.',
-  },
   ins: {
     nombre: 'Insumos',
     motivo:
@@ -126,6 +124,8 @@ function AplicacionPresupuestos() {
   const [hoja, setHoja] = useState<Hoja>('cd')
   const [itemSel, setItemSel] = useState<string | null>(null)
   const [medidorAbierto, setMedidorAbierto] = useState(false)
+  const [abrirAbierto, setAbrirAbierto] = useState(false)
+  const [nuevoAbierto, setNuevoAbierto] = useState(false)
   // Actividades cuya cantidad sale de una memoria guardada en esta sesión (la API puede informarlo con tieneMemoria).
   const [conMemoria, setConMemoria] = useState<ReadonlySet<string>>(new Set())
   const [capituloAbierto, setCapituloAbierto] = useState(false)
@@ -141,6 +141,15 @@ function AplicacionPresupuestos() {
   useEffect(() => {
     document.documentElement.dataset.theme = tema === 'claro' ? 'light' : 'dark'
   }, [tema])
+
+  // El título de la pestaña lleva el nombre del presupuesto abierto.
+  const nombreAbierto = presupuesto?.nombre
+  useEffect(() => {
+    document.title = nombreAbierto ? `SIAP · ${nombreAbierto}` : 'SIAP'
+    return () => {
+      document.title = 'SIAP'
+    }
+  }, [nombreAbierto])
 
   // Carga inicial: el primer presupuesto de la organización.
   useEffect(() => {
@@ -210,17 +219,29 @@ function AplicacionPresupuestos() {
     setAviso(null)
   }
 
-  async function nuevoPresupuesto() {
-    try {
-      const creado = await api.crear('Presupuesto nuevo')
-      setPresupuesto(creado)
-      setItemSel(null)
-      setHoja('cd')
-      setLista(await api.listar())
-      setAviso('Se creó un presupuesto vacío. Aún no hay una forma de agregar capítulos desde la web.')
-    } catch (ex) {
-      setAviso(ex instanceof Error ? ex.message : 'No se pudo crear el presupuesto.')
-    }
+  /** Pone un presupuesto como el abierto: limpia la selección, vuelve a Costos directos y olvida las memorias de la sesión. */
+  function mostrarPresupuesto(abierto: Presupuesto) {
+    setPresupuesto(abierto)
+    setItemSel(null)
+    setHoja('cd')
+    setConMemoria(new Set())
+  }
+
+  /** Abre otro presupuesto de la lista. Si falla, el error llega al diálogo, que sigue abierto. */
+  async function abrirPresupuesto(id: string) {
+    const abierto = await api.obtener(id)
+    mostrarPresupuesto(abierto)
+    setAbrirAbierto(false)
+    setAviso(`Se abrió «${abierto.nombre}».`)
+  }
+
+  /** Crea un presupuesto con el nombre dado y lo deja abierto. Si falla, el error llega al diálogo. */
+  async function crearPresupuesto(nombre: string) {
+    const creado = await api.crear(nombre)
+    mostrarPresupuesto(creado)
+    setNuevoAbierto(false)
+    setLista(await api.listar())
+    setAviso(`Se creó «${creado.nombre}». Use «Abrir» para volver a otro presupuesto.`)
   }
 
   /** Abre el medidor de cantidades de una actividad: la indicada, o la seleccionada (F6). */
@@ -305,8 +326,8 @@ function AplicacionPresupuestos() {
       onClick: irAInicio,
     },
     'sep',
-    { etiqueta: 'Nuevo', icono: I.nuevo, onClick: () => void nuevoPresupuesto() },
-    { etiqueta: 'Abrir', icono: I.abrir, deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Nuevo', icono: I.nuevo, onClick: () => setNuevoAbierto(true) },
+    { etiqueta: 'Abrir', icono: I.abrir, onClick: () => setAbrirAbierto(true) },
     { etiqueta: 'Guardar', icono: I.guardar, deshabilitado: true, motivo: 'Cada cambio se guarda en la API al confirmarlo' },
     'sep',
     { etiqueta: 'Deshacer', icono: I.deshacer, tecla: 'Ctrl+Z', deshabilitado: true, motivo: PENDIENTE_API },
@@ -374,11 +395,11 @@ function AplicacionPresupuestos() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
-                <MenuItem icon={I.nuevo} onClick={() => void nuevoPresupuesto()}>
-                  Nuevo presupuesto
+                <MenuItem icon={I.nuevo} onClick={() => setNuevoAbierto(true)}>
+                  Nuevo presupuesto...
                 </MenuItem>
-                <MenuItem icon={I.abrir} disabled title={PENDIENTE_API}>
-                  Presupuestos recientes...
+                <MenuItem icon={I.abrir} onClick={() => setAbrirAbierto(true)}>
+                  Abrir presupuesto...
                 </MenuItem>
                 <MenuItem
                   icon={I.guardar}
@@ -655,7 +676,10 @@ function AplicacionPresupuestos() {
                 <ul>
                   <li>
                     <button type="button" className="raiz">
-                      ▣ Presupuesto
+                      <span className="nombre-presupuesto" title={presupuesto.nombre}>
+                        <span aria-hidden="true">▣ </span>
+                        <span>{presupuesto.nombre}</span>
+                      </span>
                       <span className="sub">$ {pesos(presupuesto.total)}</span>
                     </button>
                   </li>
@@ -718,6 +742,17 @@ function AplicacionPresupuestos() {
                   bloqueado={false}
                 />
               )}
+              {hoja === 'apu' && presupuesto && (
+                <HojaApu
+                  presupuesto={presupuesto}
+                  itemSeleccionado={seleccionado?.codigo ?? null}
+                  onElegirItem={setItemSel}
+                  onGuardado={(actualizado) => {
+                    setPresupuesto(actualizado)
+                    setAviso(null)
+                  }}
+                />
+              )}
               {hoja === 'tot' && <PresupuestoTotal presupuesto={presupuesto} />}
               {pendiente && <HojaPendiente nombre={pendiente.nombre} motivo={pendiente.motivo} />}
             </main>
@@ -755,6 +790,10 @@ function AplicacionPresupuestos() {
             }}
           />
         )}
+        {abrirAbierto && (
+          <DialogoAbrir actualId={presupuesto?.id ?? null} onElegir={abrirPresupuesto} onCerrar={() => setAbrirAbierto(false)} />
+        )}
+        {nuevoAbierto && <DialogoNuevo onCrear={crearPresupuesto} onCerrar={() => setNuevoAbierto(false)} />}
         {presupuesto && (
           <DialogoCapitulo
             abierto={capituloAbierto}

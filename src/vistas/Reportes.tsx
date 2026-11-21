@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { MessageBar, MessageBarBody, Spinner, Text, Title3 } from '@fluentui/react-components'
+import { MessageBar, MessageBarBody, Spinner, Text } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { EntradaHistorial, FilaFormulario, ResumenDesagregado, TipoLinea } from '../api/cliente'
 import { decimales, pesos } from '../formato'
+import { HojaPagina } from './HojaPagina'
 
 /** Nombres de las categorías del resumen, en el orden de la maqueta. */
 const ETIQUETAS: Record<TipoLinea, string> = {
@@ -41,8 +42,11 @@ function useRecurso<T>(id: string, cargar: (id: string) => Promise<T>): { datos:
 export function ResumenDesagregadoVista({ presupuestoId }: VistaProps) {
   const { datos, error } = useRecurso<ResumenDesagregado>(presupuestoId, api.resumenDesagregado)
   return (
-    <section aria-label="Resumen desagregado" style={{ padding: 16, maxWidth: '80ch' }}>
-      <Title3 as="h2">Resumen desagregado</Title3>
+    <HojaPagina
+      etiqueta="Resumen desagregado"
+      titulo="Resumen desagregado"
+      descripcion="El costo directo separado por tipo de insumo, tal como lo calcula la API."
+    >
       {error && (
         <MessageBar intent="error">
           <MessageBarBody>{error}</MessageBarBody>
@@ -80,7 +84,7 @@ export function ResumenDesagregadoVista({ presupuestoId }: VistaProps) {
           </Text>
         </>
       )}
-    </section>
+    </HojaPagina>
   )
 }
 
@@ -88,8 +92,12 @@ export function ResumenDesagregadoVista({ presupuestoId }: VistaProps) {
 export function FormularioPreciosVista({ presupuestoId }: VistaProps) {
   const { datos, error } = useRecurso<FilaFormulario[]>(presupuestoId, api.formulario)
   return (
-    <section aria-label="Formulario de precios" style={{ padding: 16 }}>
-      <Title3 as="h2">Formulario de precios</Title3>
+    <HojaPagina
+      etiqueta="Formulario de precios"
+      titulo="Formulario de precios"
+      descripcion="Una fila por ítem, con su análisis, precio unitario y valor."
+      ancha
+    >
       {error && (
         <MessageBar intent="error">
           <MessageBarBody>{error}</MessageBarBody>
@@ -126,7 +134,7 @@ export function FormularioPreciosVista({ presupuestoId }: VistaProps) {
           </tbody>
         </table>
       )}
-    </section>
+    </HojaPagina>
   )
 }
 
@@ -134,8 +142,11 @@ export function FormularioPreciosVista({ presupuestoId }: VistaProps) {
 export function HistorialVista({ presupuestoId }: VistaProps) {
   const { datos, error } = useRecurso<EntradaHistorial[]>(presupuestoId, api.historial)
   return (
-    <section aria-label="Historial de cambios" style={{ padding: 16, maxWidth: '90ch' }}>
-      <Title3 as="h2">Historial de cambios</Title3>
+    <HojaPagina
+      etiqueta="Historial de cambios"
+      titulo="Historial de cambios"
+      descripcion="Quién cambió qué, del más reciente al más antiguo."
+    >
       {error && (
         <MessageBar intent="error">
           <MessageBarBody>{error}</MessageBarBody>
@@ -165,6 +176,6 @@ export function HistorialVista({ presupuestoId }: VistaProps) {
           </tbody>
         </table>
       )}
-    </section>
+    </HojaPagina>
   )
 }

@@ -372,15 +372,141 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
     )
   }
 
+  /** El control segmentado se maneja con flechas: cambia de tipo y lleva el foco al botón elegido. */
+  function alTeclearGenerador(evento: KeyboardEvent<HTMLElement>) {
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(evento.key)) return
+    evento.preventDefault()
+    const siguiente = GENERADORES[(GENERADORES.findIndex((g) => g.valor === generador) + 1) % GENERADORES.length]
+    setGenerador(siguiente.valor)
+    const botones = evento.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="radio"]')
+    botones?.[GENERADORES.findIndex((g) => g.valor === siguiente.valor)]?.focus()
+  }
+
+  const marcador = observacionGeneral.trim() ? observacionGeneral.trim() : undefined
+
+  function botonQuitar(i: number) {
+    return (
+      <button type="button" className="btn-icono" aria-label={`Quitar la fila ${i + 1}`} title={`Quitar la fila ${i + 1}`} onClick={() => quitar(i)}>
+        <IconoBasura />
+      </button>
+    )
+  }
+
+  function filaAcero(f: Borrador, i: number) {
+    const n = i + 1
+    const peso = pesoMostrado(f)
+    return (
+      <tr key={i}>
+        <td className="num-fila fija-num">{n}</td>
+        <td className="fija-obs">{celda(i, 'observacion', `Observación de la fila ${n}`, { marcador })}</td>
+        <td>{celda(i, 'nivel', `Nivel de la fila ${n}`)}</td>
+        <td>{celda(i, 'eje', `Eje de la fila ${n}`)}</td>
+        <td>{celda(i, 'esquema', `Esquema de la fila ${n}`)}</td>
+        <td>
+          <select
+            aria-label={`Referencia del acero de la fila ${n}`}
+            data-fila={i}
+            data-col="ref"
+            value={f.ref}
+            disabled={!acero}
+            onChange={(e) => cambiar(i, 'ref', e.target.value)}
+            onKeyDown={(e) => alTeclear(e, i, 'ref')}
+          >
+            <option value="">—</option>
+            {(acero?.filas ?? []).map((r) => (
+              <option key={r.ref} value={r.ref}>
+                {r.ref}
+              </option>
+            ))}
+            {f.ref !== '' && !acero?.filas.some((r) => r.ref === f.ref) && <option value={f.ref}>{f.ref}</option>}
+          </select>
+        </td>
+        <td>{celda(i, 'longitud', `longitud de la fila ${n}`)}</td>
+        <td>{celda(i, 'barras', `barras de la fila ${n}`)}</td>
+        <td className="n solo-lectura" title="Peso kg/m de la tabla de acero (solo lectura)">
+          <span className="campo-bloqueado">{peso === null ? '—' : pesoKgPorMetro(peso)}</span>
+        </td>
+        <td>{celda(i, 'piezas', `piezas de la fila ${n}`)}</td>
+        <td className="n valor fija-valor">{f.valorGuardado === null ? '—' : decimales(f.valorGuardado)}</td>
+        <td className="fija-acc">{botonQuitar(i)}</td>
+      </tr>
+    )
+  }
+
+  function filaGenerica(f: Borrador, i: number) {
+    const n = i + 1
+    const sinCantidad = f.tipo === 'Subtitulo'
+    const conFigura = f.figura !== null
+    return (
+      <tr key={i}>
+        <td className="num-fila fija-num">{n}</td>
+        <td className="fija-tipo">
+          <select
+            aria-label={`Tipo de la fila ${n}`}
+            data-fila={i}
+            data-col="tipo"
+            value={f.tipo}
+            onChange={(e) => cambiar(i, 'tipo', e.target.value as TipoFilaMemoria)}
+            onKeyDown={(e) => alTeclear(e, i, 'tipo')}
+          >
+            {TIPOS.map((t) => (
+              <option key={t.valor} value={t.valor}>
+                {t.etiqueta}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="fija-obs">{celda(i, 'observacion', `Observación de la fila ${n}`, { marcador })}</td>
+        <td>{celda(i, 'nivel', `Nivel de la fila ${n}`)}</td>
+        <td>{celda(i, 'eje', `Eje de la fila ${n}`)}</td>
+        <td>{celda(i, 'tramo', `Tramo de la fila ${n}`)}</td>
+        <td>{celda(i, 'clasificador', `Clasificador de la fila ${n}`)}</td>
+        {(['largo', 'ancho', 'alto'] as const).map((campo) => (
+          <td key={campo}>{celda(i, campo, `${campo} de la fila ${n}`, { deshabilitada: sinCantidad || conFigura })}</td>
+        ))}
+        <td>{celda(i, 'piezas', `piezas de la fila ${n}`, { deshabilitada: sinCantidad })}</td>
+        <td>
+          <div className="figura-celda">
+            <button
+              type="button"
+              className="btn-celda"
+              disabled={sinCantidad}
+              aria-label={conFigura ? `Figura de la fila ${n}: ${nombreDeFigura(f.figura!)}` : `Figura de la fila ${n}`}
+              onClick={() => setFilaConFigura(i)}
+            >
+              {conFigura ? nombreDeFigura(f.figura!) : 'Figura…'}
+            </button>
+            {conFigura && (
+              <button
+                type="button"
+                className="btn-celda"
+                aria-label={`Quitar la figura de la fila ${n}`}
+                onClick={() => cambiar(i, 'figura', null) /* las medidas de la figura se descartan al guardar */}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </td>
+        <td className="n valor fija-valor">{f.valorGuardado === null ? '—' : decimales(f.valorGuardado)}</td>
+        <td className="fija-acc">{botonQuitar(i)}</td>
+      </tr>
+    )
+  }
+
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
-      <DialogSurface style={{ maxWidth: 1280, width: '96vw' }}>
+      <DialogSurface style={{ width: '100%', maxWidth: 'min(1180px, 96vw)' }}>
         <DialogBody>
           <DialogTitle>Generador de cantidades · {codigoItem}</DialogTitle>
           <DialogContent>
-            <Text as="p">
-              {descripcion} <Text weight="semibold">({unidad})</Text>
-            </Text>
+            <div className="gen-actividad">
+              <span className="gen-codigo">{codigoItem}</span>
+              <span className="gen-nombre">{descripcion}</span>
+              <span className="insignia" title="Unidad de la actividad">
+                {unidad}
+              </span>
+            </div>
 
             {error && (
               <div role="alert">
@@ -390,25 +516,30 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
               </div>
             )}
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end', margin: '8px 0' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <Text weight="semibold">Tipo de generador</Text>
-                <select
-                  aria-label="Tipo de generador"
-                  value={generador}
-                  onChange={(e) => setGenerador(e.target.value as GeneradorMemoria)}
-                  disabled={cargando}
-                  style={{ height: 32 }}
-                >
+            <div className="gen-controles">
+              <div className="gen-campo">
+                <span className="gen-etiqueta" id="etiqueta-generador">
+                  Tipo de generador
+                </span>
+                <div className="segmentado" role="radiogroup" aria-labelledby="etiqueta-generador">
                   {GENERADORES.map((g) => (
-                    <option key={g.valor} value={g.valor}>
+                    <button
+                      key={g.valor}
+                      type="button"
+                      role="radio"
+                      aria-checked={generador === g.valor}
+                      tabIndex={generador === g.valor ? 0 : -1}
+                      disabled={cargando}
+                      onClick={() => setGenerador(g.valor)}
+                      onKeyDown={alTeclearGenerador}
+                    >
                       {g.etiqueta}
-                    </option>
+                    </button>
                   ))}
-                </select>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 280px' }}>
-                <Text weight="semibold">Observación general</Text>
+                </div>
+              </div>
+              <label className="gen-campo gen-ancho">
+                <span className="gen-etiqueta">Observación general</span>
                 <Input
                   aria-label="Observación general de la actividad"
                   value={observacionGeneral}
@@ -417,9 +548,6 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
                 />
               </label>
             </div>
-            <Text size={200} as="p">
-              Las filas sin observación heredan la observación general. Al cambiar de tipo de generador, las medidas del otro tipo no se guardan.
-            </Text>
 
             {esAcero && errorAcero && (
               <div role="alert">
@@ -432,126 +560,24 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
             {cargando ? (
               <Spinner label="Cargando la memoria…" />
             ) : (
-              <div style={{ overflowX: 'auto', marginTop: 8 }} onPaste={alPegar}>
+              <div className="gen-tabla-contenedor" onPaste={alPegar}>
                 <table
                   ref={refTabla}
                   className={`g medidor ${esAcero ? 'acero' : 'generico'}`}
                   aria-label={`Memoria de cantidades de ${codigoItem}`}
                 >
                   <thead>{esAcero ? <EncabezadoAcero /> : <EncabezadoGenerico />}</thead>
-                  <tbody>
-                    {filas.map((f, i) => {
-                      const n = i + 1
-                      const marcador = observacionGeneral.trim() ? observacionGeneral.trim() : undefined
-                      return esAcero ? (
-                        <tr key={i}>
-                          <td>{celda(i, 'observacion', `Observación de la fila ${n}`, { marcador })}</td>
-                          <td>{celda(i, 'nivel', `Nivel de la fila ${n}`)}</td>
-                          <td>{celda(i, 'eje', `Eje de la fila ${n}`)}</td>
-                          <td>{celda(i, 'esquema', `Esquema de la fila ${n}`)}</td>
-                          <td>
-                            <select
-                              aria-label={`Referencia del acero de la fila ${n}`}
-                              data-fila={i}
-                              data-col="ref"
-                              value={f.ref}
-                              disabled={!acero}
-                              onChange={(e) => cambiar(i, 'ref', e.target.value)}
-                              onKeyDown={(e) => alTeclear(e, i, 'ref')}
-                            >
-                              <option value="">—</option>
-                              {(acero?.filas ?? []).map((r) => (
-                                <option key={r.ref} value={r.ref}>
-                                  {r.ref}
-                                </option>
-                              ))}
-                              {f.ref !== '' && !acero?.filas.some((r) => r.ref === f.ref) && <option value={f.ref}>{f.ref}</option>}
-                            </select>
-                          </td>
-                          <td>{celda(i, 'longitud', `longitud de la fila ${n}`)}</td>
-                          <td>{celda(i, 'barras', `barras de la fila ${n}`)}</td>
-                          <td className="n solo-lectura" title="Peso kg/m de la tabla de acero (solo lectura)">
-                            {pesoMostrado(f) === null ? '—' : pesoKgPorMetro(pesoMostrado(f)!)}
-                          </td>
-                          <td>{celda(i, 'piezas', `piezas de la fila ${n}`)}</td>
-                          <td className="n">{f.valorGuardado === null ? '—' : decimales(f.valorGuardado)}</td>
-                          <td>
-                            <Button appearance="subtle" aria-label={`Quitar la fila ${n}`} onClick={() => quitar(i)}>
-                              ✕
-                            </Button>
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr key={i}>
-                          {(() => {
-                            const sinCantidad = f.tipo === 'Subtitulo'
-                            const conFigura = f.figura !== null
-                            return (
-                              <>
-                                <td>
-                                  <select
-                                    aria-label={`Tipo de la fila ${n}`}
-                                    data-fila={i}
-                                    data-col="tipo"
-                                    value={f.tipo}
-                                    onChange={(e) => cambiar(i, 'tipo', e.target.value as TipoFilaMemoria)}
-                                    onKeyDown={(e) => alTeclear(e, i, 'tipo')}
-                                  >
-                                    {TIPOS.map((t) => (
-                                      <option key={t.valor} value={t.valor}>
-                                        {t.etiqueta}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td>{celda(i, 'observacion', `Observación de la fila ${n}`, { marcador })}</td>
-                                <td>{celda(i, 'nivel', `Nivel de la fila ${n}`)}</td>
-                                <td>{celda(i, 'eje', `Eje de la fila ${n}`)}</td>
-                                <td>{celda(i, 'tramo', `Tramo de la fila ${n}`)}</td>
-                                <td>{celda(i, 'clasificador', `Clasificador de la fila ${n}`)}</td>
-                                {(['largo', 'ancho', 'alto'] as const).map((campo) => (
-                                  <td key={campo}>{celda(i, campo, `${campo} de la fila ${n}`, { deshabilitada: sinCantidad || conFigura })}</td>
-                                ))}
-                                <td>{celda(i, 'piezas', `piezas de la fila ${n}`, { deshabilitada: sinCantidad })}</td>
-                                <td>
-                                  <div className="figura-celda">
-                                    <button
-                                      type="button"
-                                      className="btn-celda"
-                                      disabled={sinCantidad}
-                                      aria-label={conFigura ? `Figura de la fila ${n}: ${nombreDeFigura(f.figura!)}` : `Figura de la fila ${n}`}
-                                      onClick={() => setFilaConFigura(i)}
-                                    >
-                                      {conFigura ? nombreDeFigura(f.figura!) : 'Figura…'}
-                                    </button>
-                                    {conFigura && (
-                                      <button
-                                        type="button"
-                                        className="btn-celda"
-                                        aria-label={`Quitar la figura de la fila ${n}`}
-                                        onClick={() => cambiar(i, 'figura', null) /* las medidas de la figura se descartan al guardar */}
-                                      >
-                                        ✕
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="n">{f.valorGuardado === null ? '—' : decimales(f.valorGuardado)}</td>
-                                <td>
-                                  <Button appearance="subtle" aria-label={`Quitar la fila ${n}`} onClick={() => quitar(i)}>
-                                    ✕
-                                  </Button>
-                                </td>
-                              </>
-                            )
-                          })()}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
+                  <tbody>{filas.map((f, i) => (esAcero ? filaAcero(f, i) : filaGenerica(f, i)))}</tbody>
                 </table>
               </div>
             )}
+
+            <div className="gen-bajo-tabla">
+              <Button appearance="outline" onClick={agregar} disabled={cargando}>
+                Agregar fila
+              </Button>
+              <p className="gen-leyenda">Las filas sin observación heredan la general. La API calcula al guardar.</p>
+            </div>
 
             {avisoPegado && (
               <div role="status">
@@ -559,21 +585,21 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
-              <Button appearance="outline" onClick={agregar} disabled={cargando}>
-                Agregar fila
-              </Button>
-              <Text weight="semibold">
-                Cantidad del ítem: {total === null ? 'sin calcular' : `${decimales(total)} ${unidadTotal}`}
-              </Text>
-            </div>
-            <Text size={200} as="p">
-              Un factor vacío cuenta como 1. Un descuento resta. El valor de cada fila{esAcero ? ', el peso' : ''} y la cantidad se calculan al guardar.
-              Puede pegar desde Excel: {columnas.map(etiquetaPegado).join(', ')}.
-              {esAcero && acero ? ` Tabla de acero: ${acero.fuente.replace(/\.$/, '')}.` : ''}
-            </Text>
+            <details className="gen-detalle">
+              <summary>¿Cómo se calcula?</summary>
+              <div className="gen-detalle-cuerpo">
+                <p>
+                  Un factor vacío cuenta como 1. Un descuento resta. El valor de cada fila{esAcero ? ', el peso' : ''} y la
+                  cantidad se calculan al guardar.
+                </p>
+                <p>Al cambiar de tipo de generador, las medidas del otro tipo no se guardan.</p>
+                <p>Puede pegar desde Excel: {columnas.map(etiquetaPegado).join(', ')}.</p>
+                {esAcero && acero && <p>{`Tabla de acero: ${acero.fuente.replace(/\.$/, '')}.`}</p>}
+              </div>
+            </details>
           </DialogContent>
-          <DialogActions>
+          <DialogActions className="gen-barra">
+            <span className="gen-total">Cantidad del ítem: {total === null ? 'sin calcular' : `${decimales(total)} ${unidadTotal}`}</span>
             <Button appearance="secondary" onClick={onCerrar} disabled={guardando}>
               Cancelar
             </Button>
@@ -601,6 +627,15 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
   )
 }
 
+/** Icono de papelera para quitar una fila. Decorativo: el botón lleva su nombre accesible. */
+function IconoBasura() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3" />
+    </svg>
+  )
+}
+
 const ETIQUETAS_PEGADO: Record<string, string> = {
   largo: 'Largo',
   ancho: 'Ancho',
@@ -617,19 +652,36 @@ function etiquetaPegado(campo: string): string {
 function EncabezadoGenerico() {
   return (
     <tr>
-      <th style={{ width: 104 }}>Tipo</th>
-      <th style={{ width: 190 }}>Observación</th>
-      <th style={{ width: 64 }}>Nivel</th>
-      <th style={{ width: 64 }}>Eje</th>
-      <th style={{ width: 72 }}>Tramo</th>
-      <th style={{ width: 96 }}>Clasificador</th>
-      <th style={{ width: 76 }}>Largo</th>
-      <th style={{ width: 76 }}>Ancho</th>
-      <th style={{ width: 76 }}>Alto</th>
-      <th style={{ width: 76 }}>Piezas</th>
-      <th style={{ width: 150 }}>Figura</th>
-      <th style={{ width: 96 }}>Valor</th>
-      <th style={{ width: 52 }} />
+      <th className="fija-num" style={{ width: 28 }}>
+        #
+      </th>
+      <th className="fija-tipo" style={{ width: 92 }}>
+        Tipo
+      </th>
+      <th className="fija-obs">Observación</th>
+      <th style={{ width: 52 }}>Nivel</th>
+      <th style={{ width: 52 }}>Eje</th>
+      <th style={{ width: 60 }}>Tramo</th>
+      <th style={{ width: 80 }}>Clasificador</th>
+      <th className="n" style={{ width: 64 }}>
+        Largo
+      </th>
+      <th className="n" style={{ width: 64 }}>
+        Ancho
+      </th>
+      <th className="n" style={{ width: 64 }}>
+        Alto
+      </th>
+      <th className="n" style={{ width: 56 }}>
+        Piezas
+      </th>
+      <th style={{ width: 116 }}>Figura</th>
+      <th className="n fija-valor" style={{ width: 80 }}>
+        Valor
+      </th>
+      <th className="fija-acc" style={{ width: 36 }}>
+        <span className="solo-lector">Quitar</span>
+      </th>
     </tr>
   )
 }
@@ -637,17 +689,32 @@ function EncabezadoGenerico() {
 function EncabezadoAcero() {
   return (
     <tr>
-      <th style={{ width: 200 }}>Observación</th>
-      <th style={{ width: 70 }}>Nivel</th>
-      <th style={{ width: 70 }}>Eje</th>
-      <th style={{ width: 130 }}>Esquema</th>
-      <th style={{ width: 96 }}>Ref</th>
-      <th style={{ width: 84 }}>Long</th>
-      <th style={{ width: 84 }}>Cant</th>
-      <th style={{ width: 110 }}>Peso kg/m</th>
-      <th style={{ width: 84 }}>Piezas</th>
-      <th style={{ width: 100 }}>Valor</th>
-      <th style={{ width: 52 }} />
+      <th className="fija-num" style={{ width: 28 }}>
+        #
+      </th>
+      <th className="fija-obs">Observación</th>
+      <th style={{ width: 60 }}>Nivel</th>
+      <th style={{ width: 60 }}>Eje</th>
+      <th style={{ width: 110 }}>Esquema</th>
+      <th style={{ width: 84 }}>Ref</th>
+      <th className="n" style={{ width: 72 }}>
+        Long
+      </th>
+      <th className="n" style={{ width: 64 }}>
+        Cant
+      </th>
+      <th className="n" style={{ width: 92 }}>
+        Peso kg/m
+      </th>
+      <th className="n" style={{ width: 64 }}>
+        Piezas
+      </th>
+      <th className="n fija-valor" style={{ width: 84 }}>
+        Valor
+      </th>
+      <th className="fija-acc" style={{ width: 36 }}>
+        <span className="solo-lector">Quitar</span>
+      </th>
     </tr>
   )
 }

@@ -1,32 +1,8 @@
 import { useState } from 'react'
-import {
-  Button,
-  Field,
-  Input,
-  MessageBar,
-  MessageBarBody,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow,
-  Text,
-  Title3,
-  makeStyles,
-  tokens,
-} from '@fluentui/react-components'
+import { Button, Field, Input, MessageBar, MessageBarBody } from '@fluentui/react-components'
 import type { ConfiguracionCierre, LineaCierre, Presupuesto } from '../api/cliente'
 import { pesos, porcentaje } from '../formato'
-
-const estilos = makeStyles({
-  hoja: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM, padding: tokens.spacingHorizontalL, overflow: 'auto', minHeight: 0 },
-  rejilla: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: tokens.spacingHorizontalM, maxWidth: '900px' },
-  acciones: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'center' },
-  numero: { textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
-  total: { fontWeight: tokens.fontWeightSemibold, backgroundColor: tokens.colorNeutralBackground3 },
-  nota: { color: tokens.colorNeutralForeground3, maxWidth: '75ch' },
-})
+import { HojaPagina } from './HojaPagina'
 
 interface BorradorCierre {
   administracion: string
@@ -65,9 +41,17 @@ interface PropsAIU {
   bloqueado: boolean
 }
 
+type ClaveCampo = keyof BorradorCierre
+
+const CAMPOS: { clave: ClaveCampo; etiqueta: string; ayuda: string }[] = [
+  { clave: 'administracion', etiqueta: 'Administración (%)', ayuda: 'Sobre el costo directo' },
+  { clave: 'imprevistos', etiqueta: 'Imprevistos (%)', ayuda: 'Vacío: sin esta línea' },
+  { clave: 'utilidad', etiqueta: 'Utilidad (%)', ayuda: 'Sobre el costo directo' },
+  { clave: 'iva', etiqueta: 'IVA sobre la utilidad (%)', ayuda: 'Se aplica a la utilidad' },
+]
+
 /** Hoja «Datos generales · AIU e IVA»: los porcentajes del cierre se editan aquí y el total los recalcula la API. */
 export function AiuEIva({ presupuesto, onGuardar, bloqueado }: PropsAIU) {
-  const e = estilos()
   const [borrador, setBorrador] = useState<BorradorCierre>(() => aBorrador(presupuesto.configuracion))
   const [aviso, setAviso] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
@@ -98,96 +82,120 @@ export function AiuEIva({ presupuesto, onGuardar, bloqueado }: PropsAIU) {
   }
 
   return (
-    <section className={e.hoja} aria-label="Datos generales, AIU e IVA">
-      <Title3 as="h2">AIU e IVA</Title3>
-      <Text className={e.nota}>
-        Los porcentajes se aplican sobre el costo directo (administración, imprevistos y utilidad) y el IVA sobre la
-        utilidad. Cada valor redondeado a pesos lo calcula la API.
-      </Text>
+    <HojaPagina
+      etiqueta="Datos generales, AIU e IVA"
+      titulo="AIU e IVA"
+      descripcion="Los porcentajes se aplican sobre el costo directo; el IVA, sobre la utilidad."
+    >
       {aviso && (
-        <MessageBar intent="warning">
-          <MessageBarBody>{aviso}</MessageBarBody>
-        </MessageBar>
+        <div role="alert">
+          <MessageBar intent="warning">
+            <MessageBarBody>{aviso}</MessageBarBody>
+          </MessageBar>
+        </div>
       )}
-      <div className={e.rejilla}>
-        <Field label="Administración (%)">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={borrador.administracion}
-            disabled={bloqueado || guardando}
-            onChange={(_, d) => setBorrador({ ...borrador, administracion: d.value })}
-          />
-        </Field>
-        <Field label="Imprevistos (%)" hint="Vacío: el cierre no tiene esta línea">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={borrador.imprevistos}
-            disabled={bloqueado || guardando}
-            onChange={(_, d) => setBorrador({ ...borrador, imprevistos: d.value })}
-          />
-        </Field>
-        <Field label="Utilidad (%)">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={borrador.utilidad}
-            disabled={bloqueado || guardando}
-            onChange={(_, d) => setBorrador({ ...borrador, utilidad: d.value })}
-          />
-        </Field>
-        <Field label="IVA sobre la utilidad (%)">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={borrador.iva}
-            disabled={bloqueado || guardando}
-            onChange={(_, d) => setBorrador({ ...borrador, iva: d.value })}
-          />
-        </Field>
+
+      <div className="hoja-columnas">
+        <section className="tarjeta-hoja" aria-labelledby="titulo-porcentajes">
+          <h3 id="titulo-porcentajes">Porcentajes del cierre</h3>
+          <div className="aiu-rejilla">
+            {CAMPOS.map((campo) => (
+              <div key={campo.clave} className="aiu-celda">
+                <Field label={campo.etiqueta} hint={campo.ayuda}>
+                  <Input
+                    className="aiu-campo"
+                    type="text"
+                    inputMode="decimal"
+                    value={borrador[campo.clave]}
+                    disabled={bloqueado || guardando}
+                    contentAfter={<span aria-hidden="true">%</span>}
+                    onChange={(_, d) => setBorrador({ ...borrador, [campo.clave]: d.value })}
+                  />
+                </Field>
+              </div>
+            ))}
+          </div>
+          <div className="tarjeta-pie">
+            <Button disabled={guardando} onClick={() => setBorrador(aBorrador(presupuesto.configuracion))}>
+              Deshacer cambios
+            </Button>
+            <Button appearance="primary" disabled={bloqueado || guardando} onClick={() => void guardar()}>
+              Guardar cierre
+            </Button>
+          </div>
+        </section>
+
+        <section className="tarjeta-hoja" aria-labelledby="titulo-cierre-actual">
+          <h3 id="titulo-cierre-actual">Cierre actual</h3>
+          <p className="tarjeta-nota">Lo que devolvió la API. Se actualiza al guardar.</p>
+          <table className="cierre-resumen" aria-label="Cierre actual">
+            <thead>
+              <tr>
+                <th scope="col">Concepto</th>
+                <th scope="col" className="n">
+                  %
+                </th>
+                <th scope="col" className="n">
+                  Valor
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {presupuesto.cierre.map((linea: LineaCierre) => (
+                <tr key={linea.concepto} className={linea.concepto === 'Total del presupuesto' ? 'total' : undefined}>
+                  <td>{linea.concepto}</td>
+                  <td className="n">{porcentaje(linea.porcentaje)}</td>
+                  <td className="n">$ {pesos(linea.monto)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
-      <div className={e.acciones}>
-        <Button appearance="primary" disabled={bloqueado || guardando} onClick={() => void guardar()}>
-          Guardar cierre
-        </Button>
-        <Button disabled={guardando} onClick={() => setBorrador(aBorrador(presupuesto.configuracion))}>
-          Deshacer cambios
-        </Button>
-      </div>
-    </section>
+    </HojaPagina>
   )
 }
 
 /** Hoja «Presupuesto total»: cada línea del cierre con su fórmula, tal como la calcula la API. */
 export function PresupuestoTotal({ presupuesto }: { presupuesto: Presupuesto }) {
-  const e = estilos()
   return (
-    <section className={e.hoja} aria-label="Presupuesto total">
-      <Title3 as="h2">Presupuesto total</Title3>
-      <Table size="small" aria-label="Líneas del cierre" style={{ maxWidth: '900px' }}>
-        <TableHeader>
-          <TableRow>
-            <TableHeaderCell>Concepto</TableHeaderCell>
-            <TableHeaderCell>%</TableHeaderCell>
-            <TableHeaderCell>Valor</TableHeaderCell>
-            <TableHeaderCell>Cómo se calcula</TableHeaderCell>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {presupuesto.cierre.map((linea: LineaCierre) => {
-            const esTotal = linea.concepto === 'Total del presupuesto'
-            return (
-              <TableRow key={linea.concepto} className={esTotal ? e.total : undefined}>
-                <TableCell>{linea.concepto}</TableCell>
-                <TableCell className={e.numero}>{porcentaje(linea.porcentaje)}</TableCell>
-                <TableCell className={e.numero}>$ {pesos(linea.monto)}</TableCell>
-                <TableCell>{linea.formula}</TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </section>
+    <HojaPagina
+      etiqueta="Presupuesto total"
+      titulo="Presupuesto total"
+      descripcion="Cada línea del cierre con su fórmula, tal como la calcula la API."
+    >
+      <div className="tabla-envoltura">
+        <table className="tabla-total" aria-label="Líneas del cierre">
+          <colgroup>
+            <col style={{ width: '28%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '44%' }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Concepto</th>
+              <th scope="col" className="n">
+                %
+              </th>
+              <th scope="col" className="n">
+                Valor
+              </th>
+              <th scope="col">Cómo se calcula</th>
+            </tr>
+          </thead>
+          <tbody>
+            {presupuesto.cierre.map((linea: LineaCierre) => (
+              <tr key={linea.concepto} className={linea.concepto === 'Total del presupuesto' ? 'total' : undefined}>
+                <td>{linea.concepto}</td>
+                <td className="n">{porcentaje(linea.porcentaje)}</td>
+                <td className="n">$ {pesos(linea.monto)}</td>
+                <td className="formula">{linea.formula}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </HojaPagina>
   )
 }

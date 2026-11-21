@@ -164,12 +164,14 @@ describe('Pantalla de entrada', () => {
   it('mientras carga la lista, el selector está deshabilitado y dice «Cargando empresas…»', async () => {
     apiSimulada({ empresas: () => new Response(null, { status: 500 }) })
     let liberar: (r: Response) => void = () => undefined
+    let pedida = false
     vi.stubGlobal(
       'fetch',
       vi.fn(async (entrada: RequestInfo | URL) => {
         const url = String(entrada)
         if (url === '/api/auth/me') return json({ detail: 'Sin sesión.' }, 401)
         return new Promise<Response>((resolver) => {
+          pedida = true
           liberar = resolver
         })
       }),
@@ -180,6 +182,8 @@ describe('Pantalla de entrada', () => {
     expect(screen.getByLabelText(/^Empresa/)).toBeDisabled()
     expect(screen.getByRole('option', { name: 'Cargando empresas…' })).toBeInTheDocument()
 
+    // El efecto pide la lista después del primer render: se espera a que la petición exista antes de responderla.
+    await waitFor(() => expect(pedida).toBe(true))
     liberar(json(EMPRESAS))
     await waitFor(() => expect(screen.getByLabelText(/^Empresa/)).toBeEnabled())
   })
