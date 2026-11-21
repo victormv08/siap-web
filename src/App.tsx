@@ -20,6 +20,8 @@ import type { ConfiguracionCierre, ItemResultado, Presupuesto, ResumenPresupuest
 import { pesos } from './formato'
 import { CostosDirectos } from './vistas/CostosDirectos'
 import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
+import { BarraSuperior } from './vistas/BarraSuperior'
+import { VistaPrevia } from './vistas/VistaPrevia'
 import { PieInnovatek } from './vistas/PieInnovatek'
 import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
@@ -40,7 +42,7 @@ import './estilos.css'
 /** Nombre del presupuesto vacío con el que se entra. */
 const NOMBRE_EN_BLANCO = 'Presupuesto sin título'
 
-type Hoja = 'cd' | 'cant' | 'apu' | 'ins' | 'dg' | 'tot' | 'form' | 'res' | 'gantt' | 'hist'
+type Hoja = 'cd' | 'cant' | 'apu' | 'ins' | 'dg' | 'tot' | 'form' | 'res' | 'gantt' | 'hist' | 'prev'
 
 /** Mismo orden de hojas que la maqueta de referencia. */
 const HOJAS: [Hoja, string, JSX.Element][] = [
@@ -50,6 +52,7 @@ const HOJAS: [Hoja, string, JSX.Element][] = [
   ['ins', 'Lista de insumos', <Icono key="ins" trazo={<><path d="M12 3 4 7v10l8 4 8-4V7z" /><path d="m4 7 8 4 8-4M12 11v10" /></>} />],
   ['dg', 'Datos generales, AIU e IVA', <Icono key="dg" trazo={<><path d="M19 5 5 19" /><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /></>} />],
   ['tot', 'Presupuesto total con AIU', <Icono key="tot" trazo={<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />} />],
+  ['prev', 'Vista previa del presupuesto', <Icono key="prev" trazo={<><path d="M12 5C6 5 2.5 12 2.5 12S6 19 12 19s9.5-7 9.5-7S18 5 12 5z" /><circle cx="12" cy="12" r="3" /></>} />],
   ['form', 'Formulario de precios', <Icono key="form" trazo={<><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M4 8h16M4 13h16M10 8v13" /></>} />],
   ['res', 'Resumen desagregado', <Icono key="res" trazo={<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />} />],
   ['gantt', 'Diagrama de Gantt', <Icono key="gantt" trazo={<path d="M4 4v16h16M7 8h6M10 12h7M8 16h5" />} />],
@@ -101,6 +104,7 @@ const I = {
   insumos: <Icono trazo={<><path d="M12 3 4 7v10l8 4 8-4V7z" /><path d="m4 7 8 4 8-4M12 11v10" /></>} />,
   precios: <Icono trazo={<><path d="M3 12V4h8l10 10-8 8z" /><circle cx="7.5" cy="8.5" r="1.3" /></>} />,
   aiu: <Icono trazo={<><path d="M19 5 5 19" /><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /></>} />,
+  vista: <Icono trazo={<><path d="M12 5C6 5 2.5 12 2.5 12S6 19 12 19s9.5-7 9.5-7S18 5 12 5z" /><circle cx="12" cy="12" r="3" /></>} />,
   formulario: <Icono trazo={<><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M4 8h16M4 13h16M10 8v13" /></>} />,
   resumen: <Icono trazo={<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />} />,
   gantt: <Icono trazo={<path d="M4 4v16h16M7 8h6M10 12h7M8 16h5" />} />,
@@ -390,6 +394,7 @@ function AplicacionPresupuestos() {
     { etiqueta: 'Precios', icono: I.precios, tecla: 'F7', deshabilitado: true, motivo: PENDIENTE_API },
     'sep',
     { etiqueta: 'AIU e IVA', icono: I.aiu, onClick: () => setHoja('dg') },
+    { etiqueta: 'Vista previa', icono: I.vista, onClick: () => setHoja('prev') },
     { etiqueta: 'Formulario', icono: I.formulario, onClick: () => setHoja('form') },
     { etiqueta: 'Resumen', icono: I.resumen, onClick: () => setHoja('res') },
     { etiqueta: 'Gantt', icono: I.gantt, deshabilitado: true, motivo: PENDIENTE_API },
@@ -409,19 +414,14 @@ function AplicacionPresupuestos() {
   return (
     <FluentProvider theme={tema === 'oscuro' ? webDarkTheme : webLightTheme} style={{ height: '100%' }}>
       <div className="siap-app">
-        <header className="siap-titulo">
-          <button type="button" className="siap-marca" aria-label="Ir al inicio (SIAP)" title="Ir a Costos directos" onClick={irAInicio}>
-            SIAP
-          </button>
-          <span className="siap-nombre-programa">Sistema Integral de Análisis de Precios</span>
-          <span className="derecha">
-            <b>{sesion?.empresa.nombre}</b>
-            <span className="siap-usuario">{sesion?.usuario.nombre}</span>
-            <button type="button" className="siap-salir" onClick={() => void salir()}>
-              Salir
-            </button>
-          </span>
-        </header>
+        <BarraSuperior
+          empresa={sesion?.empresa.nombre}
+          usuario={sesion?.usuario.nombre}
+          tema={tema}
+          onCambiarTema={() => setTema((t) => (t === 'oscuro' ? 'claro' : 'oscuro'))}
+          onInicio={irAInicio}
+          onSalir={() => void salir()}
+        />
 
         <nav className="siap-menu" aria-label="Menú principal">
           <Menu>
@@ -800,6 +800,7 @@ function AplicacionPresupuestos() {
                   }}
                 />
               )}
+              {hoja === 'prev' && presupuesto && <VistaPrevia presupuesto={presupuesto} empresa={sesion?.empresa.nombre} />}
               {hoja === 'tot' && <PresupuestoTotal presupuesto={presupuesto} />}
               {pendiente && <HojaPendiente nombre={pendiente.nombre} motivo={pendiente.motivo} />}
             </main>

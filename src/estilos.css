@@ -1511,3 +1511,325 @@ body {
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(15, 34, 64, 0.08), 0 8px 24px rgba(15, 34, 64, 0.05);
 }
+
+/* ---------- Barra superior: clara, con la marca, el botón de colaborar y el menú de la persona ---------- */
+.siap-titulo {
+  height: 52px;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--paper);
+  color: var(--text);
+  border-bottom: 3px solid var(--yel);
+  box-shadow: 0 2px 8px rgba(15, 34, 64, 0.08);
+}
+
+.siap-titulo .siap-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: inherit;
+  letter-spacing: normal;
+  text-align: left;
+}
+
+.siap-titulo .siap-marca:hover {
+  background: var(--accent-soft);
+}
+
+.siap-logo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #0f2240;
+  color: #d9b84a;
+  font-size: 19px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1.5px #c8a84d;
+}
+
+.siap-marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.siap-marca-texto b {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--title);
+}
+
+:root:not([data-theme="light"]) .siap-marca-texto b {
+  color: var(--yel);
+}
+
+.siap-marca-texto small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.siap-titulo .siap-titulo-doc {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.siap-colabora {
+  display: flex;
+  gap: 6px;
+}
+
+.siap-boton-colabora {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--bar-line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.siap-boton-colabora.primario {
+  background: #0f2240;
+  border-color: #0f2240;
+  color: #fff;
+}
+
+.siap-boton-colabora:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.siap-empresa {
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.siap-avatar {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 2px solid var(--yel);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.siap-avatar:hover {
+  background: var(--accent-soft);
+}
+
+.siap-menu-usuario {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+}
+
+.siap-menu-usuario span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .siap-boton-colabora {
+    font-size: 0;
+    gap: 0;
+    padding: 0 9px;
+  }
+
+  .siap-marca-texto small {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .siap-colabora,
+  .siap-empresa {
+    display: none;
+  }
+}
+
+/* ---------- Vista previa del presupuesto (en pantalla y al imprimir) ---------- */
+.vp-acciones {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.vp-imprimir {
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid #0f2240;
+  border-radius: 16px;
+  background: #0f2240;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vp-documento {
+  padding: 32px 36px;
+  border: 1px solid var(--grid);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(15, 34, 64, 0.1), 0 12px 32px rgba(15, 34, 64, 0.08);
+}
+
+.vp-cabecera {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--yel);
+}
+
+.vp-nombre {
+  margin: 0;
+  font-size: 20px;
+  color: var(--title);
+}
+
+:root:not([data-theme="light"]) .vp-nombre {
+  color: var(--yel);
+}
+
+.vp-meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.vp-vacio {
+  padding: 12px;
+  background: var(--sub);
+  border-radius: 6px;
+}
+
+.vp-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.vp-tabla th {
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--yel);
+  background: var(--head);
+  color: var(--title);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+:root:not([data-theme="light"]) .vp-tabla th {
+  color: var(--text-2);
+}
+
+.vp-tabla td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--grid);
+  overflow-wrap: anywhere;
+}
+
+.vp-tabla .n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vp-capitulo td {
+  background: var(--cap);
+  color: var(--cap-text);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vp-subtotal td {
+  background: var(--sub);
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.vp-excluido td {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.vp-cierre {
+  margin-left: auto;
+  max-width: 560px;
+  margin-bottom: 0;
+}
+
+.vp-cierre tr.vp-total td {
+  border-top: 2px solid var(--title);
+  background: var(--cap);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+@media print {
+  .siap-titulo,
+  .siap-menu,
+  .siap-herramientas,
+  .siap-estado,
+  .siap-pie-marca,
+  .siap-aviso,
+  .siap-franja,
+  .hoja-encabezado,
+  .vp-acciones {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  .siap-app {
+    display: block;
+    height: auto;
+  }
+
+  .hoja-lienzo {
+    overflow: visible;
+  }
+
+  .vp-documento {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .vp-capitulo td,
+  .vp-subtotal td,
+  .vp-tabla th,
+  .vp-cierre tr.vp-total td {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

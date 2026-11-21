@@ -383,3 +383,59 @@ describe('Deshacer y rehacer', () => {
     ])
   })
 })
+
+describe('Barra superior', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('los botones de colaborar están, desactivados y explican por qué', async () => {
+    instalarApi()
+    await abrirApp()
+
+    const grupo = screen.getByRole('group', { name: 'Trabajo colaborativo' })
+    for (const nombre of ['Compartir', 'Comentarios', 'Quién está']) {
+      const boton = within(grupo).getByRole('button', { name: nombre })
+      expect(boton).toBeDisabled()
+      expect(boton).toHaveAttribute('title', expect.stringContaining('Pendiente de decisión'))
+    }
+  })
+
+  it('el menú de la persona muestra su nombre y empresa y ofrece «Cerrar sesión»', async () => {
+    instalarApi()
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: /Menú de usuario/ }))
+
+    expect(await screen.findByRole('menuitem', { name: 'Cerrar sesión' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /tema oscuro/ })).toBeInTheDocument()
+  })
+})
+
+describe('Vista previa del presupuesto', () => {
+  beforeEach(() => fijarCsrf(null))
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
+
+  it('muestra capítulos, ítems, costo directo y el cierre con el AIU, tal como los devuelve la API', async () => {
+    instalarApi()
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: 'Vista previa' }))
+
+    const doc = await screen.findByRole('article', { name: 'Documento del presupuesto' })
+    expect(within(doc).getByText('Obra de prueba')).toBeInTheDocument()
+    const items = within(doc).getByRole('table', { name: 'Capítulos e ítems del presupuesto' })
+    expect(within(items).getByText('Localización y replanteo')).toBeInTheDocument()
+    expect(within(items).getByText('Subtotal 1. Preliminares')).toBeInTheDocument()
+    const cierre = within(doc).getByRole('table', { name: 'Costo directo, AIU e IVA' })
+    for (const linea of presupuestoDePrueba().cierre) {
+      expect(within(cierre).getByText(linea.concepto)).toBeInTheDocument()
+    }
+    expect(within(cierre).getByText('Total del presupuesto')).toBeInTheDocument()
+  })
+})

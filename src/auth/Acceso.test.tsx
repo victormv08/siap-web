@@ -310,7 +310,7 @@ describe('Pantalla de entrada', () => {
     await usuario.click(screen.getByRole('button', { name: 'Ingresar' }))
 
     await screen.findByText('Empresa de prueba')
-    expect(screen.getByText('Ana de prueba')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Menú de usuario: Ana de prueba' })).toBeInTheDocument()
     const login = llamadas.find((l) => l.url === '/api/auth/login')
     expect(login?.metodo).toBe('POST')
     expect(login?.cuerpo).toEqual({ codigo: 'EMP-OTRA', usuario: 'ana', password: 'clave-de-mentira' })
@@ -377,7 +377,8 @@ describe('Sesión', () => {
     render(<App />)
     await screen.findByText('Empresa de prueba')
 
-    await usuario.click(screen.getByRole('button', { name: 'Salir' }))
+    await usuario.click(screen.getByRole('button', { name: /Menú de usuario/ }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Cerrar sesión' }))
 
     expect(await screen.findByRole('heading', { name: 'Ingresar a SIAP' })).toBeInTheDocument()
     const salida = llamadas.find((l) => l.url === '/api/auth/logout')

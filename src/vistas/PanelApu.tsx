@@ -86,12 +86,14 @@ export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado
       {analisis && (
         <Table size="small" aria-label={`Insumos del análisis ${codigoAnalisis}`}>
           <TableHeader>
-            <TableHeaderCell>Insumo</TableHeaderCell>
-            <TableHeaderCell>Tipo</TableHeaderCell>
-            <TableHeaderCell>Cantidad</TableHeaderCell>
-            <TableHeaderCell>Precio</TableHeaderCell>
-            <TableHeaderCell>Parcial</TableHeaderCell>
-            <TableHeaderCell>Cómo se calcula</TableHeaderCell>
+            <TableRow>
+              <TableHeaderCell>Insumo</TableHeaderCell>
+              <TableHeaderCell>Tipo</TableHeaderCell>
+              <TableHeaderCell>Cantidad</TableHeaderCell>
+              <TableHeaderCell>Precio</TableHeaderCell>
+              <TableHeaderCell>Parcial</TableHeaderCell>
+              <TableHeaderCell>Cómo se calcula</TableHeaderCell>
+            </TableRow>
           </TableHeader>
           <TableBody>
             {analisis.parciales.map((p, indice) => (
