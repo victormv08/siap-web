@@ -35,6 +35,9 @@ import { DialogoAbrir } from './vistas/DialogoAbrir'
 import { DialogoNuevo } from './vistas/DialogoNuevo'
 import { DialogoCapitulo } from './vistas/DialogoCapitulo'
 import { DialogoItem } from './vistas/DialogoItem'
+import { DialogoPegarFilas } from './vistas/DialogoPegarFilas'
+import { DialogoInsumos } from './vistas/DialogoInsumos'
+import { esPegadoDeFilas } from './vistas/pegadoFilas'
 import { Cantidades } from './vistas/Cantidades'
 import { FormularioPreciosVista, HistorialVista, ResumenDesagregadoVista } from './vistas/Reportes'
 import { HojaPendiente } from './vistas/HojaPendiente'
@@ -139,6 +142,11 @@ function AplicacionPresupuestos() {
   const [conMemoria, setConMemoria] = useState<ReadonlySet<string>>(new Set())
   const [capituloAbierto, setCapituloAbierto] = useState(false)
   const [itemAbierto, setItemAbierto] = useState(false)
+  const [insumosAbierto, setInsumosAbierto] = useState(false)
+  /** Capítulo elegido en el panel de la izquierda; se borra al seleccionar un ítem, que pasa a mandar el resaltado. */
+  const [capituloElegido, setCapituloElegido] = useState<string | null>(null)
+  /** Pegar filas desde Excel: null = cerrado; el texto es lo que ya se pegó (vacío si se abrió desde el menú). */
+  const [pegado, setPegado] = useState<string | null>(null)
   const [mostrarApu, setMostrarApu] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
@@ -312,6 +320,26 @@ function AplicacionPresupuestos() {
     return () => window.removeEventListener('keydown', alPresionar)
   })
 
+  // Ctrl+V con celdas copiadas de Excel abre «Pegar filas desde Excel», salvo mientras se escribe en un campo o hay un diálogo abierto.
+  useEffect(() => {
+    function alPegar(evento: ClipboardEvent) {
+      const objetivo = evento.target
+      if (
+        objetivo instanceof HTMLElement &&
+        (objetivo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(objetivo.tagName))
+      ) {
+        return
+      }
+      if (!presupuesto || hoja !== 'cd' || document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
+      const texto = evento.clipboardData?.getData('text/plain') ?? ''
+      if (!esPegadoDeFilas(texto)) return
+      evento.preventDefault()
+      setPegado(texto)
+    }
+    window.addEventListener('paste', alPegar)
+    return () => window.removeEventListener('paste', alPegar)
+  })
+
   // Ctrl+Z deshace y Ctrl+Y (o Ctrl+Mayús+Z) rehace, salvo mientras se escribe en un campo: ahí el navegador conserva el suyo.
   useEffect(() => {
     function alPresionar(evento: KeyboardEvent) {
@@ -369,7 +397,21 @@ function AplicacionPresupuestos() {
 
   function seleccionarCapitulo(codigo: string) {
     setHoja('cd')
-    document.getElementById(`capitulo-${codigo}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    setCapituloElegido(codigo)
+    document.getElementById(`capitulo-${codigo}`)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+  }
+
+  /** La tarjeta del presupuesto vuelve al inicio de la rejilla y quita el capítulo elegido. */
+  function irAlInicioDelPresupuesto() {
+    setHoja('cd')
+    setCapituloElegido(null)
+    document.querySelector('.siap-rejilla')?.scrollTo?.({ top: 0, behavior: 'smooth' })
+  }
+
+  /** Al seleccionar un ítem, el capítulo resaltado pasa a ser el de ese ítem. */
+  function seleccionarItem(codigo: string | null) {
+    setCapituloElegido(null)
+    setItemSel(codigo)
   }
 
   const seleccionado: ItemResultado | null =
@@ -378,6 +420,7 @@ function AplicacionPresupuestos() {
     presupuesto && seleccionado
       ? presupuesto.capitulos.find((c) => c.items.some((i) => i.codigo === seleccionado.codigo))?.codigo ?? null
       : null
+  const capituloResaltado = capituloElegido ?? capituloActivo
   const excluidos = presupuesto?.capitulos.flatMap((c) => c.items).filter((i) => i.excluido).length ?? 0
   const pendiente = PENDIENTES[hoja]
   const mostrarArbol = hoja === 'cd' && panelCapitulos
@@ -416,7 +459,7 @@ function AplicacionPresupuestos() {
     { etiqueta: 'Cantidades', icono: I.cantidades, tecla: 'F6', onClick: () => abrirMedidor() },
     { etiqueta: 'APU', icono: I.apu, tecla: 'F3', onClick: () => setMostrarApu((v) => !v) },
     { etiqueta: 'Ítem base', icono: I.base, tecla: 'F4', deshabilitado: true, motivo: PENDIENTE_API },
-    { etiqueta: 'Insumos', icono: I.insumos, deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Insumos', icono: I.insumos, deshabilitado: !presupuesto, motivo: 'Abre un presupuesto', onClick: () => setInsumosAbierto(true) },
     { etiqueta: 'Precios', icono: I.precios, tecla: 'F7', deshabilitado: true, motivo: PENDIENTE_API },
     'sep',
     { etiqueta: 'AIU e IVA', icono: I.aiu, onClick: () => setHoja('dg') },
@@ -539,7 +582,7 @@ function AplicacionPresupuestos() {
                 <MenuItem icon={I.item} secondaryContent="Ctrl+D" disabled title={PENDIENTE_API}>
                   Llenar hacia abajo
                 </MenuItem>
-                <MenuItem icon={I.excel} secondaryContent="Ctrl+V" disabled title={PENDIENTE_API}>
+                <MenuItem icon={I.excel} secondaryContent="Ctrl+V" disabled={!presupuesto} onClick={() => setPegado('')}>
                   Pegar filas desde Excel
                 </MenuItem>
                 <MenuDivider />
@@ -615,6 +658,10 @@ function AplicacionPresupuestos() {
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
+                <MenuItem icon={I.insumos} disabled={!presupuesto} onClick={() => setInsumosAbierto(true)}>
+                  Editar insumos del presupuesto...
+                </MenuItem>
+                <MenuDivider />
                 <MenuItem icon={I.precios} secondaryContent="F7" disabled title={PENDIENTE_API}>
                   Cambiar precios desde lista...
                 </MenuItem>
@@ -754,7 +801,7 @@ function AplicacionPresupuestos() {
                 <div className="siap-ph">Capítulos</div>
                 <ul>
                   <li>
-                    <button type="button" className="raiz">
+                    <button type="button" className="raiz" onClick={irAlInicioDelPresupuesto}>
                       <span className="nombre-presupuesto" title={presupuesto.nombre}>
                         <span aria-hidden="true">▣ </span>
                         <span>{presupuesto.nombre}</span>
@@ -766,7 +813,8 @@ function AplicacionPresupuestos() {
                     <li key={c.codigo}>
                       <button
                         type="button"
-                        className={capituloActivo === c.codigo ? 'activo' : undefined}
+                        className={capituloResaltado === c.codigo ? 'activo' : undefined}
+                        aria-current={capituloResaltado === c.codigo ? 'true' : undefined}
                         onClick={() => seleccionarCapitulo(c.codigo)}
                       >
                         {indice + 1} {c.nombre}
@@ -788,7 +836,8 @@ function AplicacionPresupuestos() {
                       itemSeleccionado={itemSel}
                       onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
                       conMemoria={conMemoria}
-                      onSeleccionarItem={setItemSel}
+                      onSeleccionarItem={seleccionarItem}
+                      capituloResaltado={capituloResaltado}
                       bloqueado={false}
                     />
                   </div>
@@ -881,6 +930,27 @@ function AplicacionPresupuestos() {
             onConfirmar={async (nombre) => {
               setCapituloAbierto(false)
               await aplicar(() => api.agregarCapitulo(presupuesto.id, nombre))
+            }}
+          />
+        )}
+        {insumosAbierto && presupuesto && (
+          <DialogoInsumos
+            presupuesto={presupuesto}
+            onCerrar={() => setInsumosAbierto(false)}
+            onGuardado={(actualizado) => {
+              setPresupuesto(actualizado)
+              setAviso(null)
+            }}
+          />
+        )}
+        {pegado !== null && presupuesto && (
+          <DialogoPegarFilas
+            presupuesto={presupuesto}
+            textoInicial={pegado}
+            onCerrar={() => setPegado(null)}
+            onImportado={(actualizado) => {
+              setPresupuesto(actualizado)
+              setAviso(null)
             }}
           />
         )}

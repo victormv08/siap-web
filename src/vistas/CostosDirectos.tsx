@@ -8,6 +8,8 @@ interface Props {
   onAbrirMedidor: (codigo: string) => void
   /** Códigos de las actividades cuya cantidad sale de una memoria de cálculo (guardadas en esta sesión). */
   conMemoria?: ReadonlySet<string>
+  /** Código del capítulo elegido en el panel de la izquierda o que contiene el ítem seleccionado. */
+  capituloResaltado?: string | null
   bloqueado: boolean
 }
 
@@ -22,7 +24,7 @@ export function IconoMedir() {
 }
 
 /** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
-export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, bloqueado }: Props) {
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, capituloResaltado, bloqueado }: Props) {
   return (
     <table className="g" aria-label="Ítems del presupuesto">
       <thead>
@@ -45,6 +47,7 @@ export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarIte
             onSeleccionarItem={onSeleccionarItem}
             onAbrirMedidor={onAbrirMedidor}
             conMemoria={conMemoria}
+            resaltado={capituloResaltado === capitulo.codigo}
             bloqueado={bloqueado}
           />
         ))}
@@ -68,13 +71,14 @@ interface FilasProps {
   onSeleccionarItem: (codigo: string) => void
   onAbrirMedidor: (codigo: string) => void
   conMemoria?: ReadonlySet<string>
+  resaltado: boolean
   bloqueado: boolean
 }
 
-function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, bloqueado }: FilasProps) {
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, resaltado, bloqueado }: FilasProps) {
   return (
     <>
-      <tr className="cap" id={`capitulo-${capitulo.codigo}`}>
+      <tr className={resaltado ? 'cap resaltado' : 'cap'} id={`capitulo-${capitulo.codigo}`}>
         <td>▾ {indice + 1}</td>
         <td>{capitulo.nombre}</td>
         <td />

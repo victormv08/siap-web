@@ -11,6 +11,8 @@ import {
   Input,
   MessageBar,
   MessageBarBody,
+  Radio,
+  RadioGroup,
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
@@ -23,7 +25,8 @@ interface Props {
 }
 
 /**
- * Formulario para agregar un ítem a un capítulo. La actividad sale del catálogo y la API calcula su precio.
+ * Formulario para agregar un ítem a un capítulo. La actividad sale del catálogo y la API calcula su precio, o se crea una
+ * actividad nueva que solo existe en este presupuesto: nace sin insumos (precio $ 0) y se completa con «Editar APU».
  * La cantidad no se escribe aquí: el ítem nace con cantidad 0 y se mide tocando su cantidad en la tabla, que abre el generador (RD-067).
  * Se monta al abrirse, así que arranca con los datos de cero.
  */
@@ -31,7 +34,9 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
   const [capitulosBase, setCapitulosBase] = useState<CapituloCatalogo[]>([])
   const [actividades, setActividades] = useState<ActividadCatalogo[]>([])
   const [capituloDestino, setCapituloDestino] = useState(capituloInicial ?? presupuesto.capitulos[0]?.codigo ?? '')
+  const [modo, setModo] = useState<'catalogo' | 'nueva'>('catalogo')
   const [codigoAnalisis, setCodigoAnalisis] = useState('')
+  const [codigoNuevo, setCodigoNuevo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [unidad, setUnidad] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -62,19 +67,29 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     }
   }
 
-  const valido = capituloDestino !== '' && codigoAnalisis !== '' && descripcion.trim() !== ''
+  const valido =
+    capituloDestino !== '' &&
+    descripcion.trim() !== '' &&
+    (modo === 'catalogo' ? codigoAnalisis !== '' : unidad.trim() !== '')
 
   async function confirmar() {
     if (!valido) return
     setEnviando(true)
     setError(null)
     try {
-      const actualizado = await api.agregarItem(presupuesto.id, capituloDestino, {
-        descripcion: descripcion.trim(),
-        unidad: unidad.trim() || null,
-        cantidad: 0,
-        codigoAnalisis,
-      })
+      const actualizado = await api.agregarItem(
+        presupuesto.id,
+        capituloDestino,
+        modo === 'catalogo'
+          ? { descripcion: descripcion.trim(), unidad: unidad.trim() || null, cantidad: 0, codigoAnalisis }
+          : {
+              descripcion: descripcion.trim(),
+              unidad: unidad.trim(),
+              cantidad: 0,
+              codigoAnalisis: '',
+              nuevaActividad: { codigo: codigoNuevo.trim() || null, descripcion: descripcion.trim(), unidad: unidad.trim() },
+            },
+      )
       onCreado(actualizado)
       onCerrar()
     } catch (ex) {
@@ -124,28 +139,57 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 </select>
               </Field>
 
-              <Field label="Actividad" required>
-                <select aria-label="Actividad" value={codigoAnalisis} onChange={(e) => elegirActividad(e.target.value)}>
-                  <option value="">Elija una actividad…</option>
-                  {[...grupos.entries()].map(([clave, lista]) => (
-                    <optgroup key={clave} label={nombreGrupo(clave)}>
-                      {lista.map((a) => (
-                        <option key={a.codigo} value={a.codigo}>
-                          {a.codigo} · {a.descripcion}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+              <Field label="Origen de la actividad">
+                <RadioGroup layout="horizontal" value={modo} onChange={(_, d) => setModo(d.value === 'nueva' ? 'nueva' : 'catalogo')}>
+                  <Radio value="catalogo" label="Del catálogo" />
+                  <Radio value="nueva" label="Actividad nueva" />
+                </RadioGroup>
               </Field>
+
+              {modo === 'catalogo' ? (
+                <Field label="Actividad" required>
+                  <select aria-label="Actividad" value={codigoAnalisis} onChange={(e) => elegirActividad(e.target.value)}>
+                    <option value="">Elija una actividad…</option>
+                    {[...grupos.entries()].map(([clave, lista]) => (
+                      <optgroup key={clave} label={nombreGrupo(clave)}>
+                        {lista.map((a) => (
+                          <option key={a.codigo} value={a.codigo}>
+                            {a.codigo} · {a.descripcion}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <Field
+                  label="Código de la actividad nueva"
+                  hint="Opcional: si lo deja vacío se asigna uno (NUEVA-01, NUEVA-02…). Letras, números, punto, guion y guion bajo."
+                >
+                  <Input aria-label="Código de la actividad nueva" value={codigoNuevo} onChange={(_, d) => setCodigoNuevo(d.value)} />
+                </Field>
+              )}
 
               <Field label="Descripción" required>
                 <Input value={descripcion} onChange={(_, d) => setDescripcion(d.value)} />
               </Field>
 
-              <Field label="Unidad" hint="Si la deja vacía, se toma la de la actividad.">
+              <Field
+                label="Unidad"
+                required={modo === 'nueva'}
+                hint={modo === 'nueva' ? 'Por ejemplo: m2, m3, kg, und, gl.' : 'Si la deja vacía, se toma la de la actividad.'}
+              >
                 <Input value={unidad} onChange={(_, d) => setUnidad(d.value)} />
               </Field>
+
+              {modo === 'nueva' && (
+                <MessageBar intent="warning">
+                  <MessageBarBody>
+                    La actividad nueva nace <b>sin insumos</b>, con precio $ 0, y solo existe en este presupuesto. Seleccione el ítem y use
+                    «Editar APU» para agregarle sus insumos.
+                  </MessageBarBody>
+                </MessageBar>
+              )}
 
               <MessageBar intent="info">
                 <MessageBarBody>La cantidad se define después: toque la cantidad del ítem en la tabla para abrir el generador de cantidades.</MessageBarBody>

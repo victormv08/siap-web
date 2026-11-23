@@ -92,7 +92,6 @@ export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado
               <TableHeaderCell>Cantidad</TableHeaderCell>
               <TableHeaderCell>Precio</TableHeaderCell>
               <TableHeaderCell>Parcial</TableHeaderCell>
-              <TableHeaderCell>Cómo se calcula</TableHeaderCell>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -102,8 +101,10 @@ export function PanelApu({ presupuestoId, codigoAnalisis, codigoItem, onGuardado
                 <TableCell>{p.tipo ? TIPOS[p.tipo] : 'Subanálisis'}</TableCell>
                 <TableCell className={e.numero}>{decimales(p.cantidad)}</TableCell>
                 <TableCell className={e.numero}>$ {decimales(p.precio)}</TableCell>
-                <TableCell className={e.numero}>$ {decimales(p.parcial)}</TableCell>
-                <TableCell>{p.formula}</TableCell>
+                {/* U4: la explicación del valor ya no ocupa una columna; se ve al pasar el cursor sobre el parcial. */}
+                <TableCell className={e.numero} title={p.formula}>
+                  $ {decimales(p.parcial)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

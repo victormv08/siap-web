@@ -1833,3 +1833,100 @@ body {
     print-color-adjust: exact;
   }
 }
+
+/* Pegar filas desde Excel: una rejilla de celdas editables. Reutiliza table.g de la rejilla de costos directos.
+   Los selectores son más específicos que «.g td input» (ancho fijo, borde azul, texto a la derecha) para que las
+   celdas llenen su columna y se vean como una hoja de cálculo. */
+.g.pegar-filas td.pegar-td {
+  padding: 0;
+  overflow: visible;
+}
+
+.g.pegar-filas td.pegar-num {
+  padding: 0 6px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--head);
+  font-size: 11px;
+}
+
+.g.pegar-filas td input.pegar-celda {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.g.pegar-filas td.n input.pegar-celda {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.g.pegar-filas td input.pegar-celda:focus {
+  background: var(--sel);
+  box-shadow: inset 0 0 0 2px var(--sel-line);
+}
+
+.g.pegar-filas tr.pegar-mal td.pegar-td {
+  background: var(--warn-soft);
+  box-shadow: inset 0 0 0 1px var(--warn-line);
+}
+
+.g.pegar-filas tr.pegar-mal td.pegar-num {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Capítulos: al desplazarse a uno, queda debajo del encabezado fijo de la tabla; el elegido se ve resaltado en la rejilla. */
+.g tr.cap {
+  scroll-margin-top: 28px;
+}
+
+.g tr.cap.resaltado td {
+  box-shadow: inset 0 2px 0 var(--sel-line), inset 0 -2px 0 var(--sel-line);
+}
+
+/* Panel de insumos: el campo de precio llena su celda. Más específico que «.g td input» (ancho fijo de 90 px). */
+.g.insumos-tabla td.insumo-td {
+  padding: 0 4px;
+  overflow: visible;
+}
+
+.g.insumos-tabla td input.insumo-precio {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--grid);
+  border-radius: 2px;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.g.insumos-tabla td input.insumo-precio:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.g.insumos-tabla td input.insumo-precio.cambiado {
+  border-color: var(--sel-line);
+  background: var(--sel);
+}
+
+.g.insumos-tabla td input.insumo-precio[aria-invalid='true'] {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}

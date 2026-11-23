@@ -271,11 +271,65 @@ export interface ActividadCatalogo {
   precioUnitario: number
 }
 
+/** Actividad que nace junto con el ítem, solo en este presupuesto. Sin código, la API le asigna uno (NUEVA-01…). */
+export interface NuevaActividadSolicitud {
+  codigo: string | null
+  descripcion: string
+  unidad: string
+}
+
 export interface NuevoItemSolicitud {
   descripcion: string
   unidad: string | null
   cantidad: number
+  /** Código de una actividad del catálogo. Con `nuevaActividad` va vacío. */
   codigoAnalisis: string
+  nuevaActividad?: NuevaActividadSolicitud
+}
+
+/** Una fila pegada desde Excel. Sin precio: la API lo toma del catálogo. */
+export interface FilaImportadaSolicitud {
+  capitulo: string
+  codigoAnalisis: string
+  descripcion: string | null
+  unidad: string | null
+  cantidad: number
+}
+
+/** Un insumo de los análisis del presupuesto. Si sus líneas traen precios distintos, el precio es null. */
+export interface InsumoPresupuesto {
+  descripcion: string
+  unidad: string
+  tipo: TipoLinea
+  precio: number | null
+  variosPrecios: boolean
+  /** Cuántas líneas de análisis lo usan y en cuántos análisis (APU) distintos. */
+  lineas: number
+  analisis: number
+}
+
+/** Precio nuevo de un insumo, identificado por descripción, unidad y tipo. */
+export interface CambioPrecioInsumo {
+  descripcion: string
+  unidad: string
+  tipo: TipoLinea
+  precio: number
+}
+
+/** Una fila que la API no aceptó: su número (1 es la primera enviada) y el motivo. */
+export interface ErrorDeFila {
+  fila: number
+  motivo: string
+}
+
+/** Error de la API que, cuando son filas pegadas, trae el motivo de cada fila rechazada. */
+export class ErrorDeImportacion extends Error {
+  readonly errores: ErrorDeFila[]
+
+  constructor(mensaje: string, errores: ErrorDeFila[]) {
+    super(mensaje)
+    this.errores = errores
+  }
 }
 
 export interface ActualizarItemSolicitud {
@@ -296,9 +350,11 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
     // La API responde con «problem details» en español (RFC 9457): mostramos su detalle.
     let mensaje = `La API respondió ${respuesta.status}.`
     try {
-      const problema = (await respuesta.json()) as { detail?: string; title?: string }
+      const problema = (await respuesta.json()) as { detail?: string; title?: string; errores?: ErrorDeFila[] }
       mensaje = problema.detail ?? problema.title ?? mensaje
-    } catch {
+      if (Array.isArray(problema.errores)) throw new ErrorDeImportacion(mensaje, problema.errores)
+    } catch (ex) {
+      if (ex instanceof ErrorDeImportacion) throw ex
       // Sin cuerpo JSON: queda el mensaje genérico.
     }
     throw new Error(mensaje)
@@ -330,6 +386,23 @@ export const api = {
     pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos/${encodeURIComponent(codigoCapitulo)}/items`, {
       method: 'POST',
       body: JSON.stringify(datos),
+    }),
+
+  /** Agrega varias filas pegadas desde Excel: todo o nada. Si alguna falla, lanza ErrorDeImportacion con el motivo de cada fila. */
+  importarFilas: (id: string, filas: FilaImportadaSolicitud[]) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/filas`, {
+      method: 'POST',
+      body: JSON.stringify({ filas }),
+    }),
+
+  /** Los insumos que usan los análisis del presupuesto, con su precio. */
+  insumos: (id: string) => pedir<InsumoPresupuesto[]>(`/presupuestos/${encodeURIComponent(id)}/insumos`),
+
+  /** Cambia el precio de varios insumos de una vez, solo en este presupuesto. La API recalcula y devuelve el presupuesto. */
+  actualizarPreciosInsumos: (id: string, cambios: CambioPrecioInsumo[]) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/insumos/precios`, {
+      method: 'PUT',
+      body: JSON.stringify({ cambios }),
     }),
 
   analisisDelPresupuesto: (id: string, codigo: string) =>
