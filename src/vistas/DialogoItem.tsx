@@ -11,9 +11,16 @@ import {
   Input,
   MessageBar,
   MessageBarBody,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
+import { pesos } from '../formato'
 
 interface Props {
   presupuesto: Presupuesto
@@ -32,6 +39,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
   const [actividades, setActividades] = useState<ActividadCatalogo[]>([])
   const [capituloDestino, setCapituloDestino] = useState(capituloInicial ?? presupuesto.capitulos[0]?.codigo ?? '')
   const [codigoAnalisis, setCodigoAnalisis] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [unidad, setUnidad] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -84,18 +92,18 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     }
   }
 
-  // Las actividades se agrupan por capítulo de la base cuando la actividad lo trae.
-  const grupos = new Map<string, ActividadCatalogo[]>()
-  for (const a of actividades) {
-    const clave = a.capitulo ?? ''
-    grupos.set(clave, [...(grupos.get(clave) ?? []), a])
-  }
+  // Búsqueda sin distinguir mayúsculas ni tildes, sobre código y descripción.
+  const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const termino = normalizar(busqueda.trim())
+  const resultados = termino
+    ? actividades.filter((a) => normalizar(`${a.codigo} ${a.descripcion}`).includes(termino))
+    : actividades
   const nombreGrupo = (clave: string) =>
     clave === '' ? 'Actividades de demostración' : `${clave} · ${capitulosBase.find((c) => c.numero === clave)?.nombre ?? ''}`
 
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
-      <DialogSurface>
+      <DialogSurface style={{ width: 'min(1100px, 92vw)', maxWidth: 'none' }}>
         <form
           onSubmit={(evento) => {
             evento.preventDefault()
@@ -125,18 +133,43 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
               </Field>
 
               <Field label="Actividad" required>
-                <select aria-label="Actividad" value={codigoAnalisis} onChange={(e) => elegirActividad(e.target.value)}>
-                  <option value="">Elija una actividad…</option>
-                  {[...grupos.entries()].map(([clave, lista]) => (
-                    <optgroup key={clave} label={nombreGrupo(clave)}>
-                      {lista.map((a) => (
-                        <option key={a.codigo} value={a.codigo}>
-                          {a.codigo} · {a.descripcion}
-                        </option>
+                <Input
+                  type="search"
+                  placeholder="Buscar por código o descripción…"
+                  aria-label="Buscar actividad"
+                  value={busqueda}
+                  onChange={(_, d) => setBusqueda(d.value)}
+                />
+                <div className="dialogo-item-resultados">
+                  <Table size="small" aria-label="Actividades del catálogo">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHeaderCell>Código</TableHeaderCell>
+                        <TableHeaderCell>Descripción</TableHeaderCell>
+                        <TableHeaderCell>Unidad</TableHeaderCell>
+                        <TableHeaderCell>Capítulo</TableHeaderCell>
+                        <TableHeaderCell>Vr. unitario</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {resultados.map((a) => (
+                        <TableRow
+                          key={a.codigo}
+                          aria-selected={a.codigo === codigoAnalisis}
+                          className={a.codigo === codigoAnalisis ? 'dialogo-item-fila activa' : 'dialogo-item-fila'}
+                          onClick={() => elegirActividad(a.codigo)}
+                        >
+                          <TableCell>{a.codigo}</TableCell>
+                          <TableCell>{a.descripcion}</TableCell>
+                          <TableCell>{a.unidad}</TableCell>
+                          <TableCell>{nombreGrupo(a.capitulo ?? '')}</TableCell>
+                          <TableCell className="dialogo-item-numero">$ {pesos(a.precioUnitario)}</TableCell>
+                        </TableRow>
                       ))}
-                    </optgroup>
-                  ))}
-                </select>
+                    </TableBody>
+                  </Table>
+                  {resultados.length === 0 && <div className="dialogo-item-vacio">Sin actividades que coincidan.</div>}
+                </div>
               </Field>
 
               <Field label="Descripción" required>

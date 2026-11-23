@@ -302,6 +302,22 @@ select {
   color: var(--text);
 }
 
+.siap-ph-cerrar {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.siap-ph-cerrar:hover {
+  color: var(--text);
+  opacity: 0.7;
+}
+
 .siap-arbol ul {
   list-style: none;
   margin: 0;
@@ -1832,4 +1848,32 @@ body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+.dialogo-item-resultados {
+  margin-top: 6px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--grid);
+  border-radius: 4px;
+}
+
+.dialogo-item-fila {
+  cursor: pointer;
+}
+
+.dialogo-item-fila.activa td {
+  font-weight: 700;
+}
+
+.dialogo-item-numero {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dialogo-item-vacio {
+  padding: 8px;
+  font-size: 12px;
+  opacity: 0.7;
 }

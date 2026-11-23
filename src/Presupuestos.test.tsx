@@ -506,8 +506,9 @@ describe('Agregar ítem', () => {
 
     expect(within(dialogo).queryByLabelText('Capítulo de la base de actividades')).not.toBeInTheDocument()
     expect(within(dialogo).queryByLabelText(/Cantidad/)).not.toBeInTheDocument()
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.type(within(dialogo).getByLabelText('Buscar actividad'), 'mam-01')
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Agregar ítem' })).not.toBeInTheDocument())
