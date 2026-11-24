@@ -39,8 +39,8 @@ describe('Agregar ítem y medir su cantidad', { timeout: 15_000 }, () => {
     const medir = within(dialogo).getByRole('button', { name: 'Medir cantidad' })
     expect(medir).toBeDisabled() // sin actividad elegida no se puede
 
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
     await usuario.click(within(dialogo).getByRole('button', { name: 'Medir cantidad' }))
 
     expect(await screen.findByRole('dialog', { name: /Generador de cantidades · 1\.03/ })).toBeInTheDocument()
@@ -66,8 +66,8 @@ describe('Agregar ítem y medir su cantidad', { timeout: 15_000 }, () => {
     expect(within(dialogo).getByRole('status')).toHaveTextContent('Elija una actividad del catálogo')
     expect(within(dialogo).getByRole('button', { name: 'Medir cantidad' })).toHaveAttribute('title', expect.stringContaining('Elija una actividad'))
 
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
 
     expect(within(dialogo).queryByRole('status')).not.toBeInTheDocument()
     expect(within(dialogo).getByRole('button', { name: 'Medir cantidad' })).toBeEnabled()
@@ -90,8 +90,8 @@ describe('Agregar ítem y medir su cantidad', { timeout: 15_000 }, () => {
     const unidad = within(dialogo).getByLabelText('Unidad')
     expect(unidad.tagName).toBe('SELECT')
 
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
     expect(unidad).toHaveValue('m2')
     expect(within(dialogo).getByRole('button', { name: 'Agregar ítem' })).toBeEnabled()
 

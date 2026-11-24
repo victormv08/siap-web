@@ -14,9 +14,16 @@ import {
   Radio,
   RadioGroup,
   Select,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
+import { pesos } from '../formato'
 import { aNumero } from './pegadoFilas'
 import { IconoMedir } from './CostosDirectos'
 import { unidadesConActual } from './unidades'
@@ -44,6 +51,7 @@ export function DialogoItem({ presupuesto, capituloInicial, actividadInicial = n
   const [modo, setModo] = useState<'catalogo' | 'nueva'>('catalogo')
   const [codigoAnalisis, setCodigoAnalisis] = useState(actividadInicial?.codigo ?? '')
   const [codigoNuevo, setCodigoNuevo] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [descripcion, setDescripcion] = useState(actividadInicial?.descripcion ?? '')
   const [cantidadTexto, setCantidadTexto] = useState('')
   const [unidad, setUnidad] = useState(actividadInicial?.unidad ?? '')
@@ -130,19 +138,19 @@ export function DialogoItem({ presupuesto, capituloInicial, actividadInicial = n
     }
   }
 
-  // Las actividades se agrupan por capítulo de la base cuando la actividad lo trae.
-  const grupos = new Map<string, ActividadCatalogo[]>()
-  for (const a of actividades) {
-    const clave = a.capitulo ?? ''
-    grupos.set(clave, [...(grupos.get(clave) ?? []), a])
-  }
+  // Búsqueda sin distinguir mayúsculas ni tildes, sobre código y descripción.
+  const normalizar = (texto: string) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const termino = normalizar(busqueda.trim())
+  const resultados = termino ? actividades.filter((a) => normalizar(`${a.codigo} ${a.descripcion}`).includes(termino)) : actividades
   const nombreGrupo = (clave: string) =>
     clave === '' ? 'Actividades de demostración' : `${clave} · ${capitulosBase.find((c) => c.numero === clave)?.nombre ?? ''}`
 
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
       <DialogSurface className="dlg-item">
+        {/* La validación la hace el formulario (valido y motivoNoValido): la del navegador bloquearía el envío por el cuadro de búsqueda, que no es un dato. */}
         <form
+          noValidate
           onSubmit={(evento) => {
             evento.preventDefault()
             void confirmar()
@@ -176,18 +184,43 @@ export function DialogoItem({ presupuesto, capituloInicial, actividadInicial = n
 
               {modo === 'catalogo' ? (
                 <Field label="Actividad" required>
-                  <Select aria-label="Actividad" value={codigoAnalisis} onChange={(_, d) => elegirActividad(d.value)}>
-                    <option value="">Elija una actividad…</option>
-                    {[...grupos.entries()].map(([clave, lista]) => (
-                      <optgroup key={clave} label={nombreGrupo(clave)}>
-                        {lista.map((a) => (
-                          <option key={a.codigo} value={a.codigo}>
-                            {a.codigo} · {a.descripcion}
-                          </option>
+                  <Input
+                    type="search"
+                    placeholder="Buscar por código o descripción…"
+                    aria-label="Buscar actividad"
+                    value={busqueda}
+                    onChange={(_, d) => setBusqueda(d.value)}
+                  />
+                  <div className="dialogo-item-resultados">
+                    <Table size="small" aria-label="Actividades del catálogo">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHeaderCell>Código</TableHeaderCell>
+                          <TableHeaderCell>Descripción</TableHeaderCell>
+                          <TableHeaderCell>Unidad</TableHeaderCell>
+                          <TableHeaderCell>Capítulo</TableHeaderCell>
+                          <TableHeaderCell>Vr. unitario</TableHeaderCell>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {resultados.map((a) => (
+                          <TableRow
+                            key={a.codigo}
+                            aria-selected={a.codigo === codigoAnalisis}
+                            className={a.codigo === codigoAnalisis ? 'dialogo-item-fila activa' : 'dialogo-item-fila'}
+                            onClick={() => elegirActividad(a.codigo)}
+                          >
+                            <TableCell>{a.codigo}</TableCell>
+                            <TableCell>{a.descripcion}</TableCell>
+                            <TableCell>{a.unidad}</TableCell>
+                            <TableCell>{nombreGrupo(a.capitulo ?? '')}</TableCell>
+                            <TableCell className="dialogo-item-numero">$ {pesos(a.precioUnitario)}</TableCell>
+                          </TableRow>
                         ))}
-                      </optgroup>
-                    ))}
-                  </Select>
+                      </TableBody>
+                    </Table>
+                    {resultados.length === 0 && <div className="dialogo-item-vacio">Sin actividades que coincidan.</div>}
+                  </div>
                 </Field>
               ) : (
                 <>

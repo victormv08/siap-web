@@ -477,7 +477,7 @@ describe('Insertar y eliminar desde los menús y la barra', () => {
   })
 })
 
-describe('Agregar ítem', () => {
+describe('Agregar ítem', { timeout: 15_000 }, () => {
   beforeEach(() => fijarCsrf(null))
   afterEach(() => {
     cleanup()
@@ -506,8 +506,9 @@ describe('Agregar ítem', () => {
 
     expect(within(dialogo).queryByLabelText('Capítulo de la base de actividades')).not.toBeInTheDocument()
     expect(within(dialogo).getByLabelText('Cantidad')).toHaveValue('')
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.type(within(dialogo).getByLabelText('Buscar actividad'), 'mam-01')
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Agregar ítem' })).not.toBeInTheDocument())
@@ -536,8 +537,8 @@ describe('Agregar ítem', () => {
     await usuario.click(screen.getByRole('button', { name: 'Ítem' }))
     const dialogo = await screen.findByRole('dialog', { name: 'Agregar ítem' })
 
-    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
-    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await waitFor(() => expect(within(dialogo).getByRole('row', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
     await usuario.type(within(dialogo).getByLabelText('Cantidad'), '12,5')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 

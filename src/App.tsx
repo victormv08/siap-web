@@ -23,7 +23,6 @@ import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
 import { BarraSuperior } from './vistas/BarraSuperior'
 import { VistaPrevia } from './vistas/VistaPrevia'
 import { PieInnovatek } from './vistas/PieInnovatek'
-import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
 import { DialogoBuscarItemBase } from './vistas/DialogoBuscarItemBase'
 import { DialogoConfirmar } from './vistas/DialogoConfirmar'
@@ -150,7 +149,6 @@ function AplicacionPresupuestos() {
   const [capituloElegido, setCapituloElegido] = useState<string | null>(null)
   /** Pegar filas desde Excel: null = cerrado; el texto es lo que ya se pegó (vacío si se abrió desde el menú). */
   const [pegado, setPegado] = useState<string | null>(null)
-  const [mostrarApu, setMostrarApu] = useState(true)
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
   const [aEliminar, setAEliminar] = useState<ItemResultado | null>(null)
@@ -182,6 +180,29 @@ function AplicacionPresupuestos() {
   // anterior se reutiliza; si no, se crea. Los demás (por ejemplo los de ejemplo) se escogen con «Abrir».
   useEffect(() => {
     let vigente = true
+    // Una pestaña abierta desde «APU» llega con ?apu=<id>&item=<codigo>: muestra ese presupuesto en la hoja APU.
+    const parametros = new URLSearchParams(window.location.search)
+    const apuId = parametros.get('apu')
+    const apuItem = parametros.get('item')
+    if (apuId) {
+      api
+        .obtener(apuId)
+        .then((abierto) => {
+          if (!vigente) return
+          setPresupuesto(abierto)
+          setItemSel(apuItem)
+          setHoja('apu')
+        })
+        .catch((ex: unknown) => {
+          if (vigente) setAviso(ex instanceof Error ? ex.message : 'No se pudo abrir el APU.')
+        })
+        .finally(() => {
+          if (vigente) setCargando(false)
+        })
+      return () => {
+        vigente = false
+      }
+    }
     api
       .listar()
       .then(async (resumen) => {
@@ -291,6 +312,30 @@ function AplicacionPresupuestos() {
     window.addEventListener('keydown', alPresionar)
     return () => window.removeEventListener('keydown', alPresionar)
   }, [presupuesto])
+
+  /** Abre el APU de la actividad seleccionada en otra pestaña, con la misma sesión. */
+  function abrirApuEnPestana() {
+    if (!presupuesto || !seleccionado) {
+      setAviso('Selecciona una actividad para ver su APU.')
+      return
+    }
+    const url = new URL(window.location.href)
+    url.search = ''
+    url.searchParams.set('apu', presupuesto.id)
+    url.searchParams.set('item', seleccionado.codigo)
+    window.open(url.toString(), '_blank')
+  }
+
+  // F3 abre el APU de la actividad seleccionada en otra pestaña, como el botón de la barra.
+  useEffect(() => {
+    function alPresionar(evento: KeyboardEvent) {
+      if (evento.key !== 'F3') return
+      evento.preventDefault()
+      abrirApuEnPestana()
+    }
+    window.addEventListener('keydown', alPresionar)
+    return () => window.removeEventListener('keydown', alPresionar)
+  })
 
   // F6 abre el medidor de la actividad seleccionada, como el atajo de la barra.
   useEffect(() => {
@@ -531,7 +576,7 @@ function AplicacionPresupuestos() {
     },
     'sep',
     { etiqueta: 'Cantidades', icono: I.cantidades, tecla: 'F6', onClick: () => abrirMedidor() },
-    { etiqueta: 'APU', icono: I.apu, tecla: 'F3', onClick: () => setMostrarApu((v) => !v) },
+    { etiqueta: 'APU', icono: I.apu, tecla: 'F3', onClick: () => abrirApuEnPestana() },
     { etiqueta: 'Ítem base', icono: I.base, tecla: 'F4', deshabilitado: !presupuesto, motivo: 'Abre un presupuesto', onClick: () => setBuscarBaseAbierto(true) },
     { etiqueta: 'Insumos', icono: I.insumos, deshabilitado: !presupuesto, motivo: 'Abre un presupuesto', onClick: () => setInsumosAbierto(true) },
     { etiqueta: 'Precios', icono: I.precios, tecla: 'F7', deshabilitado: true, motivo: PENDIENTE_API },
@@ -736,9 +781,7 @@ function AplicacionPresupuestos() {
                   secondaryContent="F3"
                   disabled={!seleccionado}
                   title={seleccionado ? undefined : 'Selecciona un ítem'}
-                  onClick={() => {
-                    setMostrarApu(true)
-                  }}
+                  onClick={() => abrirApuEnPestana()}
                 >
                   Editar APU del ítem
                 </MenuItem>
@@ -894,7 +937,18 @@ function AplicacionPresupuestos() {
           <div className={mostrarArbol ? 'siap-trabajo' : 'siap-trabajo sin-arbol'}>
             {mostrarArbol && (
               <aside className="siap-arbol" aria-label="Capítulos">
-                <div className="siap-ph">Capítulos</div>
+                <div className="siap-ph">
+                  <span>Capítulos</span>
+                  <button
+                    type="button"
+                    className="siap-ph-cerrar"
+                    aria-label="Cerrar el panel de capítulos"
+                    title="Cerrar el panel de capítulos"
+                    onClick={() => setPanelCapitulos(false)}
+                  >
+                    ×
+                  </button>
+                </div>
                 <ul>
                   <li>
                     <button type="button" className="raiz" onClick={irAlInicioDelPresupuesto}>
@@ -938,18 +992,6 @@ function AplicacionPresupuestos() {
                       bloqueado={false}
                     />
                   </div>
-                  {mostrarApu && seleccionado && (
-                    <PanelApu
-                      key={`${seleccionado.codigoAnalisis}-${presupuesto?.id}-${presupuesto?.total}`}
-                      presupuestoId={presupuesto?.id ?? ''}
-                      codigoAnalisis={seleccionado.codigoAnalisis}
-                      codigoItem={seleccionado.codigo}
-                      onGuardado={(actualizado) => {
-                        setPresupuesto(actualizado)
-                        setAviso(null)
-                      }}
-                    />
-                  )}
                 </>
               )}
               {hoja === 'cant' && presupuesto && (

@@ -81,7 +81,7 @@ describe('Buscar ítem base', { timeout: 15_000 }, () => {
     await usuario.click(within(dialogo).getByRole('button', { name: /Elegir MAM-01/ }))
 
     const agregar = await screen.findByRole('dialog', { name: 'Agregar ítem' })
-    await waitFor(() => expect(within(agregar).getByLabelText('Actividad')).toHaveValue('MAM-01'))
+    await waitFor(() => expect(within(agregar).getByRole('row', { name: /MAM-01/ })).toHaveAttribute('aria-selected', 'true'))
     expect(within(agregar).getByLabelText(/Descripción/)).toHaveValue('Mampostería en bloque de arcilla')
     expect(within(agregar).getByLabelText('Unidad')).toHaveValue('m2')
     expect(within(agregar).getByRole('button', { name: 'Agregar ítem' })).toBeEnabled()
@@ -99,6 +99,6 @@ describe('Buscar ítem base', { timeout: 15_000 }, () => {
     await usuario.type(within(dialogo).getByRole('textbox', { name: 'Buscar en la base de actividades' }), 'pintura{Enter}')
 
     const agregar = await screen.findByRole('dialog', { name: 'Agregar ítem' })
-    await waitFor(() => expect(within(agregar).getByLabelText('Actividad')).toHaveValue('PIN-01'))
+    await waitFor(() => expect(within(agregar).getByRole('row', { name: /PIN-01/ })).toHaveAttribute('aria-selected', 'true'))
   })
 })

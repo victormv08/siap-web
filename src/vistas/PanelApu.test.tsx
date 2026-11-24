@@ -1,5 +1,4 @@
 import { cleanup, configure, render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { fijarCsrf } from '../auth/enlace'
@@ -23,15 +22,16 @@ describe('Panel del APU', { timeout: 15_000 }, () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/')
   })
 
   it('no tiene la columna «Cómo se calcula»: la fórmula se ve al pasar el cursor sobre el parcial', async () => {
     instalarApi({
       manejador: (url) => (url === '/api/presupuestos/P-0001/analisis/PRE-01' ? json(ANALISIS) : undefined),
     })
-    const usuario = userEvent.setup()
+    // El APU se abre en su propia pestaña (?apu=<presupuesto>&item=<código>), como al pulsar «APU» en la barra.
+    window.history.replaceState({}, '', '/?apu=P-0001&item=1.01')
     render(<App />)
-    await usuario.click(await screen.findByText('Localización y replanteo'))
 
     const tabla = await screen.findByRole('table', { name: 'Insumos del análisis PRE-01' })
 

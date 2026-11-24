@@ -44,7 +44,7 @@ describe('Agregar ítem con una actividad nueva', { timeout: 15_000 }, () => {
     const { usuario, dialogo } = await abrirDialogo()
 
     expect(within(dialogo).getByRole('radio', { name: 'Del catálogo' })).toBeChecked()
-    expect(within(dialogo).getByLabelText('Actividad')).toBeInTheDocument()
+    expect(within(dialogo).getByRole('table', { name: 'Actividades del catálogo' })).toBeInTheDocument()
     expect(within(dialogo).queryByLabelText('Código de la actividad nueva')).not.toBeInTheDocument()
 
     await usuario.click(within(dialogo).getByRole('radio', { name: 'Actividad nueva' }))

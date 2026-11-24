@@ -1,4 +1,4 @@
-import { cleanup, configure, render, screen, within } from '@testing-library/react'
+import { cleanup, configure, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
@@ -92,6 +92,7 @@ describe('CRUD de presupuesto y capítulos desde la web', { timeout: 15_000 }, (
     await usuario.type(campo, 'Obras preliminares')
     await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Guardar' }))
     expect(llamadas.find((l) => l.metodo === 'PUT' && l.url === `${BASE}/capitulos/1`)?.cuerpo).toEqual({ nombre: 'Obras preliminares' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) // el diálogo termina de cerrarse antes de seguir
 
     await usuario.click(within(menu).getByRole('button', { name: 'Editar' }))
     await usuario.click(await screen.findByRole('menuitem', { name: /Eliminar capítulo/ }))
