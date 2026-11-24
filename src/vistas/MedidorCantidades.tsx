@@ -33,9 +33,19 @@ interface Props {
   codigoItem: string
   descripcion: string
   unidad: string
+  /** Otras actividades del presupuesto con medidas guardadas: se pueden copiar a esta como punto de partida. */
+  otrasMemorias?: OtraMemoria[]
   onCerrar: () => void
   /** Se llama tras guardar con el presupuesto recalculado y si la actividad quedó con memoria. */
   onGuardado: (presupuesto: Presupuesto, conMemoria: boolean) => void
+}
+
+/** Una actividad del presupuesto que ya tiene medidas guardadas. */
+export interface OtraMemoria {
+  codigo: string
+  descripcion: string
+  unidad: string
+  cantidad: number
 }
 
 /** Fila en edición. Los números se guardan como texto para no perder lo que la persona escribe a medias. */
@@ -197,7 +207,7 @@ function mensajeDe(ex: unknown, respaldo: string): string {
  * el valor de cada fila y el peso del acero los calcula y devuelve la API al guardar (D-27).
  * Tiene dos tipos de generador (genérico y acero de refuerzo), figuras geométricas y pegado desde Excel.
  */
-export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unidad, onCerrar, onGuardado }: Props) {
+export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unidad, otrasMemorias = [], onCerrar, onGuardado }: Props) {
   const [generador, setGenerador] = useState<GeneradorMemoria>(generadorPorUnidad(unidad))
   const [observacionGeneral, setObservacionGeneral] = useState('')
   const [filas, setFilas] = useState<Borrador[]>([])
@@ -315,6 +325,28 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
       return [...base, ...agregadas]
     })
     setAvisoPegado(`Se agregaron ${nuevas.length} fila${nuevas.length === 1 ? '' : 's'} desde lo pegado.`)
+  }
+
+  /** Copia al borrador las medidas guardadas de otra actividad. No guarda nada: se ajustan y se confirman con «Guardar memoria». */
+  async function copiarDe(codigoOrigen: string) {
+    if (!codigoOrigen) return
+    setError(null)
+    try {
+      const origen = await api.memoria(presupuestoId, codigoOrigen)
+      if (origen.filas.length === 0) {
+        setError(`La actividad ${codigoOrigen} no tiene medidas guardadas.`)
+        return
+      }
+      setFilas(aBorrador(origen))
+      setTotal(origen.total)
+      if (origen.generador) setGenerador(origen.generador)
+      setObservacionGeneral(origen.observacionGeneral ?? '')
+      setAvisoPegado(
+        `Se copiaron ${origen.filas.length} fila${origen.filas.length === 1 ? '' : 's'} de la actividad ${codigoOrigen}. Ajústelas y pulse «Guardar memoria»; si cancela, no se guarda nada.`,
+      )
+    } catch (ex) {
+      setError(mensajeDe(ex, 'No se pudieron copiar las medidas.'))
+    }
   }
 
   async function guardar() {
@@ -538,6 +570,24 @@ export function MedidorCantidades({ presupuestoId, codigoItem, descripcion, unid
                   ))}
                 </div>
               </div>
+              {otrasMemorias.length > 0 && (
+                <label className="gen-campo">
+                  <span className="gen-etiqueta">Medidas ya guardadas</span>
+                  <select
+                    aria-label="Usar medidas guardadas de otra actividad"
+                    value=""
+                    disabled={cargando}
+                    onChange={(e) => void copiarDe(e.target.value)}
+                  >
+                    <option value="">Copiar de otra actividad…</option>
+                    {otrasMemorias.map((m) => (
+                      <option key={m.codigo} value={m.codigo}>
+                        {m.codigo} · {m.descripcion} ({decimales(m.cantidad)} {m.unidad})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label className="gen-campo gen-ancho">
                 <span className="gen-etiqueta">Observación general</span>
                 <Input

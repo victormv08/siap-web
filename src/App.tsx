@@ -988,6 +988,10 @@ function AplicacionPresupuestos() {
             codigoItem={seleccionado.codigo}
             descripcion={seleccionado.descripcion}
             unidad={seleccionado.unidad}
+            otrasMemorias={presupuesto.capitulos
+              .flatMap((c) => c.items)
+              .filter((i) => i.codigo !== seleccionado.codigo && (i.tieneMemoria === true || conMemoria.has(i.codigo)))
+              .map((i) => ({ codigo: i.codigo, descripcion: i.descripcion, unidad: i.unidad, cantidad: i.cantidad }))}
             onCerrar={() => setMedidorAbierto(false)}
             onGuardado={(actualizado, tieneFilas) => {
               setPresupuesto(actualizado)
