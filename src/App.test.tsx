@@ -144,8 +144,12 @@ describe('SIAP web', () => {
     expect(screen.getByText('no suma')).toBeInTheDocument()
   })
 
-  it('al tocar la cantidad se abre el generador de cantidades y no se escribe a mano', async () => {
-    const { llamadas } = apiSimulada()
+  it('un ítem con memoria de cálculo no se escribe a mano: tocar su cantidad abre el generador', async () => {
+    const conMemoria = presupuesto()
+    conMemoria.capitulos[0].items[0] = { ...conMemoria.capitulos[0].items[0], tieneMemoria: true }
+    const { llamadas } = apiSimulada((url, init) =>
+      url === '/api/presupuestos/P-0001' || (url === '/api/presupuestos' && init.method === 'POST') ? respuestaJson(conMemoria) : undefined,
+    )
     const usuario = userEvent.setup()
     render(<App />)
 

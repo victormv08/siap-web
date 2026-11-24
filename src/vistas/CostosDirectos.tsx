@@ -1,5 +1,7 @@
+import { useRef, useState } from 'react'
 import type { CapituloResultado, ItemResultado, Presupuesto } from '../api/cliente'
 import { decimales, pesos } from '../formato'
+import { aNumero } from './pegadoFilas'
 
 interface Props {
   presupuesto: Presupuesto
@@ -10,6 +12,8 @@ interface Props {
   conMemoria?: ReadonlySet<string>
   /** Código del capítulo elegido en el panel de la izquierda o que contiene el ítem seleccionado. */
   capituloResaltado?: string | null
+  /** Guarda una cantidad escrita a mano en la celda. Si falla, la app muestra el motivo y la celda vuelve al valor guardado. */
+  onCambiarCantidad?: (codigo: string, cantidad: number) => Promise<void>
   bloqueado: boolean
 }
 
@@ -24,7 +28,7 @@ export function IconoMedir() {
 }
 
 /** Cuadro de costos directos con las columnas y el aspecto de la maqueta. */
-export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, capituloResaltado, bloqueado }: Props) {
+export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, capituloResaltado, onCambiarCantidad, bloqueado }: Props) {
   return (
     <table className="g" aria-label="Ítems del presupuesto">
       <thead>
@@ -47,6 +51,7 @@ export function CostosDirectos({ presupuesto, itemSeleccionado, onSeleccionarIte
             onSeleccionarItem={onSeleccionarItem}
             onAbrirMedidor={onAbrirMedidor}
             conMemoria={conMemoria}
+            onCambiarCantidad={onCambiarCantidad}
             resaltado={capituloResaltado === capitulo.codigo}
             bloqueado={bloqueado}
           />
@@ -71,11 +76,12 @@ interface FilasProps {
   onSeleccionarItem: (codigo: string) => void
   onAbrirMedidor: (codigo: string) => void
   conMemoria?: ReadonlySet<string>
+  onCambiarCantidad?: (codigo: string, cantidad: number) => Promise<void>
   resaltado: boolean
   bloqueado: boolean
 }
 
-function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, resaltado, bloqueado }: FilasProps) {
+function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, onAbrirMedidor, conMemoria, onCambiarCantidad, resaltado, bloqueado }: FilasProps) {
   return (
     <>
       <tr className={resaltado ? 'cap resaltado' : 'cap'} id={`capitulo-${capitulo.codigo}`}>
@@ -95,6 +101,7 @@ function FilasCapitulo({ indice, capitulo, itemSeleccionado, onSeleccionarItem, 
           onAbrirMedidor={() => onAbrirMedidor(item.codigo)}
           onSeleccionar={() => onSeleccionarItem(item.codigo)}
           desdeMemoria={item.tieneMemoria === true || (conMemoria?.has(item.codigo) ?? false)}
+          onCambiarCantidad={onCambiarCantidad ? (cantidad) => onCambiarCantidad(item.codigo, cantidad) : undefined}
           bloqueado={bloqueado}
         />
       ))}
@@ -118,11 +125,32 @@ interface FilaProps {
   onAbrirMedidor: () => void
   /** La cantidad viene de una memoria de cálculo (se muestra la etiqueta «memoria»). */
   desdeMemoria: boolean
+  onCambiarCantidad?: (cantidad: number) => Promise<void>
   bloqueado: boolean
 }
 
-function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, desdeMemoria, bloqueado }: FilaProps) {
+function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, desdeMemoria, onCambiarCantidad, bloqueado }: FilaProps) {
   const valorMostrado = decimales(item.cantidad)
+  // Mientras la persona escribe, la celda guarda su borrador; null = se muestra el valor guardado.
+  const [borrador, setBorrador] = useState<string | null>(null)
+  // Escape cancela: el blur que viene después no debe guardar el borrador.
+  const cancelado = useRef(false)
+  // Con memoria, la cantidad es el total de sus medidas: no se escribe a mano (hay que editar la memoria).
+  const editable = !desdeMemoria && onCambiarCantidad !== undefined
+
+  async function confirmar() {
+    if (cancelado.current) {
+      cancelado.current = false
+      setBorrador(null)
+      return
+    }
+    if (borrador === null || !onCambiarCantidad) return
+    const texto = borrador
+    setBorrador(null)
+    const numero = aNumero(texto)
+    if (numero === null || numero < 0 || numero === item.cantidad) return
+    await onCambiarCantidad(numero)
+  }
 
   const clases = [item.excluido ? 'excl' : '', seleccionado ? 'seleccionada' : ''].filter(Boolean).join(' ')
 
@@ -140,33 +168,60 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, d
       </td>
       <td>{item.unidad}</td>
       <td className={desdeMemoria ? 'n con-memoria' : 'n'}>
-        {/* La cantidad no se escribe a mano: tocarla abre el generador de cantidades (RD-067). */}
-        <input
-          aria-label={`Cantidad del ítem ${item.codigo}`}
-          value={valorMostrado}
-          readOnly
-          disabled={bloqueado || item.excluido}
-          title="Toque para medir la cantidad en el generador de cantidades"
-          style={{ cursor: 'pointer' }}
-          onClick={(evento) => {
-            evento.stopPropagation()
-            onSeleccionar()
-            onAbrirMedidor()
-          }}
-          onDoubleClick={(evento) => evento.stopPropagation()}
-          onKeyDown={(evento) => {
-            if (evento.key === 'Enter' || evento.key === ' ') {
-              evento.preventDefault()
+        {/* Dos formas de poner la cantidad: escribirla aquí (si no tiene memoria) o medirla en el generador y guardar las medidas. */}
+        {editable ? (
+          <input
+            aria-label={`Cantidad del ítem ${item.codigo}`}
+            inputMode="decimal"
+            value={borrador ?? valorMostrado}
+            disabled={bloqueado || item.excluido}
+            title="Escriba la cantidad, o use la regla para medirla en el generador"
+            onClick={(evento) => evento.stopPropagation()}
+            onDoubleClick={(evento) => evento.stopPropagation()}
+            onFocus={(evento) => {
+              onSeleccionar()
+              evento.currentTarget.select()
+            }}
+            onChange={(evento) => setBorrador(evento.target.value)}
+            onBlur={() => void confirmar()}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter') {
+                evento.preventDefault()
+                evento.currentTarget.blur()
+              } else if (evento.key === 'Escape') {
+                cancelado.current = true
+                evento.currentTarget.blur()
+              }
+            }}
+          />
+        ) : (
+          <input
+            aria-label={`Cantidad del ítem ${item.codigo}`}
+            value={valorMostrado}
+            readOnly
+            disabled={bloqueado || item.excluido}
+            title="La cantidad sale de la memoria de cálculo: toque para abrir el generador y cambiar las medidas"
+            style={{ cursor: 'pointer' }}
+            onClick={(evento) => {
+              evento.stopPropagation()
               onSeleccionar()
               onAbrirMedidor()
-            }
-          }}
-        />
+            }}
+            onDoubleClick={(evento) => evento.stopPropagation()}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault()
+                onSeleccionar()
+                onAbrirMedidor()
+              }
+            }}
+          />
+        )}
         <button
           type="button"
           className="btn-medir"
           aria-label={`Medir cantidades de ${item.descripcion}`}
-          title="Generador de cantidades (F6)"
+          title="Medir en el generador de cantidades y guardar las medidas (F6)"
           onClick={(evento) => {
             evento.stopPropagation()
             onAbrirMedidor()

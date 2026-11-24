@@ -484,7 +484,7 @@ describe('Agregar ítem', () => {
     vi.unstubAllGlobals()
   })
 
-  it('una sola lista de actividades; no pide cantidad y la manda en 0 (se mide tocándola en la tabla)', async () => {
+  it('una sola lista de actividades; la cantidad es opcional y, si se deja vacía, se manda en 0 para medirla después', async () => {
     const conNuevo = presupuestoDePrueba()
     conNuevo.capitulos[0].items = [
       ...conNuevo.capitulos[0].items,
@@ -505,7 +505,7 @@ describe('Agregar ítem', () => {
     const dialogo = await screen.findByRole('dialog', { name: 'Agregar ítem' })
 
     expect(within(dialogo).queryByLabelText('Capítulo de la base de actividades')).not.toBeInTheDocument()
-    expect(within(dialogo).queryByLabelText(/Cantidad/)).not.toBeInTheDocument()
+    expect(within(dialogo).getByLabelText('Cantidad')).toHaveValue('')
     await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
     await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
@@ -514,5 +514,36 @@ describe('Agregar ítem', () => {
     expect(screen.queryByRole('dialog', { name: /Generador de cantidades/ })).not.toBeInTheDocument()
     const post = llamadas.find((l) => l.url === '/api/presupuestos/P-0001/capitulos/1/items')
     expect(post?.cuerpo).toMatchObject({ codigoAnalisis: 'MAM-01', cantidad: 0 })
+  })
+
+  it('si se escribe la cantidad al agregar el ítem, se manda tal cual (acepta coma decimal) y no abre el generador', async () => {
+    const conNuevo = presupuestoDePrueba()
+    conNuevo.capitulos[0].items = [
+      ...conNuevo.capitulos[0].items,
+      { ...conNuevo.capitulos[0].items[0], codigo: '1.03', descripcion: 'Muro nuevo', cantidad: 0, valorConsiderado: 0, valorCalculado: 0 },
+    ]
+    const { llamadas } = instalarApi({
+      manejador: (url, init) => {
+        if (url === '/api/catalogo/capitulos') return json([])
+        if (url === '/api/catalogo/actividades')
+          return json([{ codigo: 'MAM-01', capitulo: '', descripcion: 'Mampostería en bloque', unidad: 'm2', precioUnitario: 133305 }])
+        if (url === '/api/presupuestos/P-0001/capitulos/1/items' && init.method === 'POST') return json(conNuevo)
+        return undefined
+      },
+    })
+    const usuario = await abrirApp()
+
+    await usuario.click(screen.getByRole('button', { name: 'Ítem' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Agregar ítem' })
+
+    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    await usuario.type(within(dialogo).getByLabelText('Cantidad'), '12,5')
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Agregar ítem' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('dialog', { name: /Generador de cantidades/ })).not.toBeInTheDocument()
+    const post = llamadas.find((l) => l.url === '/api/presupuestos/P-0001/capitulos/1/items')
+    expect(post?.cuerpo).toMatchObject({ codigoAnalisis: 'MAM-01', cantidad: 12.5 })
   })
 })

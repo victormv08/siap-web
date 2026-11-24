@@ -208,6 +208,16 @@ function AplicacionPresupuestos() {
     }
   }
 
+  /** Guarda una cantidad escrita a mano en la tabla. La API la rechaza si el ítem tiene memoria de cálculo. */
+  async function cambiarCantidad(codigo: string, cantidad: number) {
+    if (!presupuesto) return
+    const item = presupuesto.capitulos.flatMap((c) => c.items).find((i) => i.codigo === codigo)
+    if (!item) return
+    await aplicar(() =>
+      api.actualizarItem(presupuesto.id, codigo, { cantidad, excluido: item.excluido, motivoExclusion: item.motivoExclusion }),
+    )
+  }
+
   async function excluir(motivo: string) {
     if (!presupuesto || !aExcluir) return
     const item = aExcluir
@@ -906,6 +916,7 @@ function AplicacionPresupuestos() {
                       presupuesto={presupuesto}
                       itemSeleccionado={itemSel}
                       onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
+                      onCambiarCantidad={cambiarCantidad}
                       conMemoria={conMemoria}
                       onSeleccionarItem={seleccionarItem}
                       capituloResaltado={capituloResaltado}

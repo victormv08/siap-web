@@ -16,6 +16,7 @@ import {
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
+import { aNumero } from './pegadoFilas'
 
 interface Props {
   presupuesto: Presupuesto
@@ -27,7 +28,7 @@ interface Props {
 /**
  * Formulario para agregar un ítem a un capítulo. La actividad sale del catálogo y la API calcula su precio, o se crea una
  * actividad nueva que solo existe en este presupuesto: nace sin insumos (precio $ 0) y se completa con «Editar APU».
- * La cantidad no se escribe aquí: el ítem nace con cantidad 0 y se mide tocando su cantidad en la tabla, que abre el generador (RD-067).
+ * La cantidad es opcional: se puede escribir aquí o después en la tabla, o dejarla en 0 y medirla con el generador de cantidades.
  * Se monta al abrirse, así que arranca con los datos de cero.
  */
 export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }: Props) {
@@ -38,6 +39,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
   const [codigoAnalisis, setCodigoAnalisis] = useState('')
   const [codigoNuevo, setCodigoNuevo] = useState('')
   const [descripcion, setDescripcion] = useState('')
+  const [cantidadTexto, setCantidadTexto] = useState('')
   const [unidad, setUnidad] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -67,7 +69,12 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     }
   }
 
+  // Vacía = 0 (se medirá después). Si la escribió, debe ser un número que no sea negativo.
+  const cantidad = cantidadTexto.trim() === '' ? 0 : aNumero(cantidadTexto)
+  const cantidadValida = cantidad !== null && cantidad >= 0
+
   const valido =
+    cantidadValida &&
     capituloDestino !== '' &&
     descripcion.trim() !== '' &&
     (modo === 'catalogo' ? codigoAnalisis !== '' : unidad.trim() !== '')
@@ -81,11 +88,11 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
         presupuesto.id,
         capituloDestino,
         modo === 'catalogo'
-          ? { descripcion: descripcion.trim(), unidad: unidad.trim() || null, cantidad: 0, codigoAnalisis }
+          ? { descripcion: descripcion.trim(), unidad: unidad.trim() || null, cantidad: cantidad ?? 0, codigoAnalisis }
           : {
               descripcion: descripcion.trim(),
               unidad: unidad.trim(),
-              cantidad: 0,
+              cantidad: cantidad ?? 0,
               codigoAnalisis: '',
               nuevaActividad: { codigo: codigoNuevo.trim() || null, descripcion: descripcion.trim(), unidad: unidad.trim() },
             },
@@ -191,9 +198,14 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 </MessageBar>
               )}
 
-              <MessageBar intent="info">
-                <MessageBarBody>La cantidad se define después: toque la cantidad del ítem en la tabla para abrir el generador de cantidades.</MessageBarBody>
-              </MessageBar>
+              <Field
+                label="Cantidad"
+                validationState={cantidadValida ? 'none' : 'error'}
+                validationMessage={cantidadValida ? undefined : 'Escriba un número que no sea negativo.'}
+                hint="Opcional. Escríbala aquí, o déjela vacía y mídala después con la regla del ítem en la tabla (generador de cantidades)."
+              >
+                <Input aria-label="Cantidad" inputMode="decimal" value={cantidadTexto} onChange={(_, d) => setCantidadTexto(d.value)} />
+              </Field>
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={onCerrar} disabled={enviando}>
