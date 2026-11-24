@@ -75,6 +75,20 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
   const cantidad = cantidadTexto.trim() === '' ? 0 : aNumero(cantidadTexto)
   const cantidadValida = cantidad !== null && cantidad >= 0
 
+  // Por qué no se puede agregar todavía (para decirlo en pantalla en vez de dejar los botones apagados sin explicación).
+  const motivoNoValido =
+    presupuesto.capitulos.length === 0
+      ? 'Este presupuesto no tiene capítulos. Cierre este cuadro y cree uno con «Capítulo».'
+      : modo === 'catalogo' && codigoAnalisis === ''
+        ? 'Elija una actividad del catálogo para poder agregar o medir.'
+        : descripcion.trim() === ''
+          ? 'Escriba la descripción del ítem.'
+          : modo === 'nueva' && unidad.trim() === ''
+            ? 'Escriba la unidad de la actividad nueva.'
+            : !cantidadValida
+              ? 'La cantidad debe ser un número que no sea negativo.'
+              : null
+
   const valido =
     cantidadValida &&
     capituloDestino !== '' &&
@@ -221,7 +235,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                     type="button"
                     icon={<IconoMedir />}
                     disabled={!valido || enviando}
-                    title="Agrega el ítem y abre el generador de cantidades para medirlo y guardar las medidas"
+                    title={motivoNoValido ?? 'Agrega el ítem y abre el generador de cantidades para medirlo y guardar las medidas'}
                     onClick={() => void confirmar(true)}
                   >
                     Medir cantidad
@@ -229,6 +243,11 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 </div>
               </Field>
             </DialogContent>
+            {motivoNoValido && (
+              <p role="status" style={{ margin: '8px 0 0', fontSize: 12 }}>
+                {motivoNoValido}
+              </p>
+            )}
             <DialogActions>
               <Button appearance="secondary" onClick={onCerrar} disabled={enviando}>
                 Cancelar
