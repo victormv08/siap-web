@@ -1964,3 +1964,18 @@ body {
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* Código de una actividad en los resultados de «Buscar ítem base»: se ve como enlace y sirve con teclado. */
+.enlace-fila {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fila-resultado:hover {
+  background: var(--accent-soft);
+}

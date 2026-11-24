@@ -24,6 +24,8 @@ import { unidadesConActual } from './unidades'
 interface Props {
   presupuesto: Presupuesto
   capituloInicial: string | null
+  /** Actividad elegida con «Buscar ítem base»: el cuadro arranca con ella ya puesta. */
+  actividadInicial?: ActividadCatalogo | null
   onCerrar: () => void
   /** Tras crear el ítem. Con «Medir», trae el código del ítem nuevo para abrir su generador de cantidades. */
   onCreado: (presupuesto: Presupuesto, medir?: { codigoItem: string }) => void
@@ -35,16 +37,16 @@ interface Props {
  * La cantidad es opcional: se puede escribir aquí o después en la tabla, o dejarla en 0 y medirla con el generador de cantidades.
  * Se monta al abrirse, así que arranca con los datos de cero.
  */
-export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }: Props) {
+export function DialogoItem({ presupuesto, capituloInicial, actividadInicial = null, onCerrar, onCreado }: Props) {
   const [capitulosBase, setCapitulosBase] = useState<CapituloCatalogo[]>([])
   const [actividades, setActividades] = useState<ActividadCatalogo[]>([])
   const [capituloDestino, setCapituloDestino] = useState(capituloInicial ?? presupuesto.capitulos[0]?.codigo ?? '')
   const [modo, setModo] = useState<'catalogo' | 'nueva'>('catalogo')
-  const [codigoAnalisis, setCodigoAnalisis] = useState('')
+  const [codigoAnalisis, setCodigoAnalisis] = useState(actividadInicial?.codigo ?? '')
   const [codigoNuevo, setCodigoNuevo] = useState('')
-  const [descripcion, setDescripcion] = useState('')
+  const [descripcion, setDescripcion] = useState(actividadInicial?.descripcion ?? '')
   const [cantidadTexto, setCantidadTexto] = useState('')
-  const [unidad, setUnidad] = useState('')
+  const [unidad, setUnidad] = useState(actividadInicial?.unidad ?? '')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 

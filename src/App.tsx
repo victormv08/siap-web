@@ -16,7 +16,7 @@ import {
   webLightTheme,
 } from '@fluentui/react-components'
 import { api } from './api/cliente'
-import type { ConfiguracionCierre, ItemResultado, Presupuesto, ResumenPresupuesto } from './api/cliente'
+import type { ActividadCatalogo, ConfiguracionCierre, ItemResultado, Presupuesto, ResumenPresupuesto } from './api/cliente'
 import { pesos } from './formato'
 import { CostosDirectos } from './vistas/CostosDirectos'
 import { AiuEIva, PresupuestoTotal } from './vistas/Cierre'
@@ -25,6 +25,7 @@ import { VistaPrevia } from './vistas/VistaPrevia'
 import { PieInnovatek } from './vistas/PieInnovatek'
 import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
+import { DialogoBuscarItemBase } from './vistas/DialogoBuscarItemBase'
 import { DialogoConfirmar } from './vistas/DialogoConfirmar'
 import { DialogoRenombrar } from './vistas/DialogoRenombrar'
 import { DialogoEliminar } from './vistas/DialogoEliminar'
@@ -153,6 +154,9 @@ function AplicacionPresupuestos() {
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
   const [aEliminar, setAEliminar] = useState<ItemResultado | null>(null)
+  // «Buscar ítem base» (F4): la búsqueda abierta y la actividad elegida con la que se abre «Agregar ítem».
+  const [buscarBaseAbierto, setBuscarBaseAbierto] = useState(false)
+  const [actividadBase, setActividadBase] = useState<ActividadCatalogo | null>(null)
   // Renombrar o eliminar un presupuesto o un capítulo (CRUD completo). El código es el del capítulo.
   const [renombrando, setRenombrando] = useState<{ tipo: 'presupuesto' | 'capitulo'; codigo?: string } | null>(null)
   const [eliminando, setEliminando] = useState<{ tipo: 'presupuesto' | 'capitulo'; codigo?: string } | null>(null)
@@ -276,6 +280,17 @@ function AplicacionPresupuestos() {
     setItemSel(destino)
     setMedidorAbierto(true)
   }
+
+  // F4 abre la búsqueda de ítem base, como el botón de la barra.
+  useEffect(() => {
+    function alPresionar(evento: KeyboardEvent) {
+      if (evento.key !== 'F4' || !presupuesto) return
+      evento.preventDefault()
+      setBuscarBaseAbierto(true)
+    }
+    window.addEventListener('keydown', alPresionar)
+    return () => window.removeEventListener('keydown', alPresionar)
+  }, [presupuesto])
 
   // F6 abre el medidor de la actividad seleccionada, como el atajo de la barra.
   useEffect(() => {
@@ -517,7 +532,7 @@ function AplicacionPresupuestos() {
     'sep',
     { etiqueta: 'Cantidades', icono: I.cantidades, tecla: 'F6', onClick: () => abrirMedidor() },
     { etiqueta: 'APU', icono: I.apu, tecla: 'F3', onClick: () => setMostrarApu((v) => !v) },
-    { etiqueta: 'Ítem base', icono: I.base, tecla: 'F4', deshabilitado: true, motivo: PENDIENTE_API },
+    { etiqueta: 'Ítem base', icono: I.base, tecla: 'F4', deshabilitado: !presupuesto, motivo: 'Abre un presupuesto', onClick: () => setBuscarBaseAbierto(true) },
     { etiqueta: 'Insumos', icono: I.insumos, deshabilitado: !presupuesto, motivo: 'Abre un presupuesto', onClick: () => setInsumosAbierto(true) },
     { etiqueta: 'Precios', icono: I.precios, tecla: 'F7', deshabilitado: true, motivo: PENDIENTE_API },
     'sep',
@@ -727,7 +742,7 @@ function AplicacionPresupuestos() {
                 >
                   Editar APU del ítem
                 </MenuItem>
-                <MenuItem icon={I.base} secondaryContent="F4" disabled title={PENDIENTE_API}>
+                <MenuItem icon={I.base} secondaryContent="F4" disabled={!presupuesto} onClick={() => setBuscarBaseAbierto(true)}>
                   Buscar ítem base...
                 </MenuItem>
               </MenuList>
@@ -1045,11 +1060,25 @@ function AplicacionPresupuestos() {
             }}
           />
         )}
+        {buscarBaseAbierto && presupuesto && (
+          <DialogoBuscarItemBase
+            onCerrar={() => setBuscarBaseAbierto(false)}
+            onElegir={(actividad) => {
+              setBuscarBaseAbierto(false)
+              setActividadBase(actividad)
+              setItemAbierto(true)
+            }}
+          />
+        )}
         {itemAbierto && presupuesto && (
           <DialogoItem
             presupuesto={presupuesto}
             capituloInicial={capituloActivo}
-            onCerrar={() => setItemAbierto(false)}
+            actividadInicial={actividadBase}
+            onCerrar={() => {
+              setItemAbierto(false)
+              setActividadBase(null)
+            }}
             onCreado={(actualizado, medir) => {
               setPresupuesto(actualizado)
               setAviso(null)
