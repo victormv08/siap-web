@@ -359,6 +359,7 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
     }
     throw new Error(mensaje)
   }
+  if (respuesta.status === 204) return undefined as T // sin cuerpo (por ejemplo, al eliminar un presupuesto)
   return (await respuesta.json()) as T
 }
 
@@ -426,6 +427,24 @@ export const api = {
   rehacer: (id: string) => pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/rehacer`, { method: 'POST' }),
 
   historial: (id: string) => pedir<EntradaHistorial[]>(`/presupuestos/${encodeURIComponent(id)}/historial`),
+
+  /** Cambia el nombre del presupuesto. La API deja constancia en el historial y se puede deshacer. */
+  renombrarPresupuesto: (id: string, nombre: string) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ nombre }) }),
+
+  /** Borra el presupuesto entero con su historial. NO se puede deshacer. */
+  eliminarPresupuesto: (id: string) => pedir<void>(`/presupuestos/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  /** Cambia el nombre de un capítulo; su código y sus ítems no cambian. */
+  renombrarCapitulo: (id: string, codigoCapitulo: string, nombre: string) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos/${encodeURIComponent(codigoCapitulo)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ nombre }),
+    }),
+
+  /** Quita un capítulo con sus ítems y las memorias de esos ítems. Se puede deshacer. */
+  eliminarCapitulo: (id: string, codigoCapitulo: string) =>
+    pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos/${encodeURIComponent(codigoCapitulo)}`, { method: 'DELETE' }),
 
   agregarCapitulo: (id: string, nombre: string) =>
     pedir<Presupuesto>(`/presupuestos/${encodeURIComponent(id)}/capitulos`, {

@@ -25,6 +25,8 @@ import { VistaPrevia } from './vistas/VistaPrevia'
 import { PieInnovatek } from './vistas/PieInnovatek'
 import { PanelApu } from './vistas/PanelApu'
 import { HojaApu } from './vistas/HojaApu'
+import { DialogoConfirmar } from './vistas/DialogoConfirmar'
+import { DialogoRenombrar } from './vistas/DialogoRenombrar'
 import { DialogoEliminar } from './vistas/DialogoEliminar'
 import { DialogoExcluir } from './vistas/DialogoExcluir'
 import { MedidorCantidades } from './vistas/MedidorCantidades'
@@ -151,6 +153,9 @@ function AplicacionPresupuestos() {
   const [aviso, setAviso] = useState<string | null>(null)
   const [aExcluir, setAExcluir] = useState<ItemResultado | null>(null)
   const [aEliminar, setAEliminar] = useState<ItemResultado | null>(null)
+  // Renombrar o eliminar un presupuesto o un capítulo (CRUD completo). El código es el del capítulo.
+  const [renombrando, setRenombrando] = useState<{ tipo: 'presupuesto' | 'capitulo'; codigo?: string } | null>(null)
+  const [eliminando, setEliminando] = useState<{ tipo: 'presupuesto' | 'capitulo'; codigo?: string } | null>(null)
   const [panelCapitulos, setPanelCapitulos] = useState(true)
   const [barraVisible, setBarraVisible] = useState(true)
   const [tema, setTema] = useState<'oscuro' | 'claro'>('claro')
@@ -284,6 +289,50 @@ function AplicacionPresupuestos() {
     await aplicar(() => api.eliminarItem(presupuesto.id, item.codigo))
     setAEliminar(null)
     setItemSel(null)
+  }
+
+  /** Cambia el nombre del presupuesto o del capítulo elegido. Si la API lo rechaza, el error llega al diálogo, que sigue abierto. */
+  async function renombrar(nombre: string) {
+    if (!presupuesto || !renombrando) return
+    const { tipo, codigo } = renombrando
+    if (tipo === 'presupuesto') {
+      setPresupuesto(await api.renombrarPresupuesto(presupuesto.id, nombre))
+      setLista(await api.listar())
+    } else if (codigo) {
+      setPresupuesto(await api.renombrarCapitulo(presupuesto.id, codigo, nombre))
+    }
+    setRenombrando(null)
+    setAviso(null)
+  }
+
+  /** Elimina el presupuesto abierto (no se puede deshacer) o un capítulo con sus ítems (sí se puede). */
+  async function eliminarElegido() {
+    if (!presupuesto || !eliminando) return
+    const { tipo, codigo } = eliminando
+    setEliminando(null)
+    if (tipo === 'capitulo' && codigo) {
+      await aplicar(() => api.eliminarCapitulo(presupuesto.id, codigo))
+      setCapituloElegido(null)
+      setItemSel(null)
+      return
+    }
+    try {
+      const nombre = presupuesto.nombre
+      await api.eliminarPresupuesto(presupuesto.id)
+      const restantes = await api.listar()
+      setLista(restantes)
+      setCapituloElegido(null)
+      if (restantes.length > 0) {
+        mostrarPresupuesto(await api.obtener(restantes[0].id))
+        setAviso(`Se eliminó «${nombre}». Se abrió «${restantes[0].nombre}».`)
+      } else {
+        setPresupuesto(null)
+        setItemSel(null)
+        setAviso(`Se eliminó «${nombre}». No quedan presupuestos: use «Nuevo» para crear uno.`)
+      }
+    } catch (ex) {
+      setAviso(ex instanceof Error ? ex.message : 'La API no pudo eliminar el presupuesto.')
+    }
   }
 
   /** Deshace o rehace el último cambio en la API; ella devuelve el presupuesto ya calculado. */
@@ -512,6 +561,12 @@ function AplicacionPresupuestos() {
                 >
                   Guardar
                 </MenuItem>
+                <MenuItem icon={I.nuevo} disabled={!presupuesto} onClick={() => setRenombrando({ tipo: 'presupuesto' })}>
+                  Renombrar presupuesto...
+                </MenuItem>
+                <MenuItem icon={I.eliminar} disabled={!presupuesto} onClick={() => setEliminando({ tipo: 'presupuesto' })}>
+                  Eliminar presupuesto...
+                </MenuItem>
                 <MenuDivider />
                 <MenuItem icon={I.excel} disabled title={PENDIENTE_API}>
                   Importar desde Excel...
@@ -555,6 +610,22 @@ function AplicacionPresupuestos() {
                 </MenuItem>
                 <MenuItem icon={I.capitulo} disabled={!presupuesto} onClick={() => setCapituloAbierto(true)}>
                   Insertar capítulo
+                </MenuItem>
+                <MenuItem
+                  icon={I.capitulo}
+                  disabled={!capituloResaltado}
+                  title={capituloResaltado ? undefined : 'Selecciona un capítulo o un ítem'}
+                  onClick={() => capituloResaltado && setRenombrando({ tipo: 'capitulo', codigo: capituloResaltado })}
+                >
+                  Renombrar capítulo...
+                </MenuItem>
+                <MenuItem
+                  icon={I.eliminar}
+                  disabled={!capituloResaltado}
+                  title={capituloResaltado ? undefined : 'Selecciona un capítulo o un ítem'}
+                  onClick={() => capituloResaltado && setEliminando({ tipo: 'capitulo', codigo: capituloResaltado })}
+                >
+                  Eliminar capítulo...
                 </MenuItem>
                 <MenuItem
                   icon={I.eliminar}
@@ -963,6 +1034,39 @@ function AplicacionPresupuestos() {
               setPresupuesto(actualizado)
               setAviso(null)
             }}
+          />
+        )}
+        {renombrando && presupuesto && (
+          <DialogoRenombrar
+            titulo={renombrando.tipo === 'presupuesto' ? 'Renombrar presupuesto' : 'Renombrar capítulo'}
+            etiqueta={renombrando.tipo === 'presupuesto' ? 'Nombre del presupuesto' : 'Nombre del capítulo'}
+            valorInicial={
+              renombrando.tipo === 'presupuesto'
+                ? presupuesto.nombre
+                : (presupuesto.capitulos.find((c) => c.codigo === renombrando.codigo)?.nombre ?? '')
+            }
+            onCancelar={() => setRenombrando(null)}
+            onConfirmar={async (nombre) => {
+              try {
+                await renombrar(nombre)
+              } catch (ex) {
+                setAviso(ex instanceof Error ? ex.message : 'La API no pudo cambiar el nombre.')
+                setRenombrando(null)
+              }
+            }}
+          />
+        )}
+        {eliminando && presupuesto && (
+          <DialogoConfirmar
+            titulo={eliminando.tipo === 'presupuesto' ? 'Eliminar presupuesto' : 'Eliminar capítulo'}
+            mensaje={
+              eliminando.tipo === 'presupuesto'
+                ? `«${presupuesto.nombre}» se borrará con todos sus capítulos, ítems e historial. Esto NO se puede deshacer.`
+                : `El capítulo «${presupuesto.capitulos.find((c) => c.codigo === eliminando.codigo)?.nombre ?? ''}» se quitará con todos sus ítems y sus memorias de cantidades. Puede recuperarlo con Deshacer.`
+            }
+            textoConfirmar={eliminando.tipo === 'presupuesto' ? 'Eliminar presupuesto' : 'Eliminar capítulo'}
+            onCancelar={() => setEliminando(null)}
+            onConfirmar={eliminarElegido}
           />
         )}
         <DialogoEliminar
