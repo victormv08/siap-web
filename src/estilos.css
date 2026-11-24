@@ -1930,3 +1930,37 @@ body {
   border-color: var(--warn);
   background: var(--warn-soft);
 }
+
+/* ---------- Diálogo «Agregar ítem»: formulario en una cuadrícula, con campos de Fluent y avisos claros ---------- */
+.dlg-item {
+  max-width: 620px;
+  width: 100%;
+}
+
+.dlg-form {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 10px;
+}
+
+.dlg-dos-columnas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 560px) {
+  .dlg-dos-columnas {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dlg-aviso {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  font-size: 12px;
+  line-height: 1.4;
+}

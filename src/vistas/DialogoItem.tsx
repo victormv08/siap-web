@@ -13,6 +13,7 @@ import {
   MessageBarBody,
   Radio,
   RadioGroup,
+  Select,
 } from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
@@ -138,7 +139,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
 
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
-      <DialogSurface>
+      <DialogSurface className="dlg-item">
         <form
           onSubmit={(evento) => {
             evento.preventDefault()
@@ -147,24 +148,21 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
         >
           <DialogBody>
             <DialogTitle>Agregar ítem</DialogTitle>
-            <DialogContent>
+            <DialogContent className="dlg-form">
               {error && (
                 <MessageBar intent="error">
                   <MessageBarBody>{error}</MessageBarBody>
                 </MessageBar>
               )}
+
               <Field label="Capítulo del presupuesto" required>
-                <select
-                  aria-label="Capítulo del presupuesto"
-                  value={capituloDestino}
-                  onChange={(e) => setCapituloDestino(e.target.value)}
-                >
+                <Select aria-label="Capítulo del presupuesto" value={capituloDestino} onChange={(_, d) => setCapituloDestino(d.value)}>
                   {presupuesto.capitulos.map((c) => (
                     <option key={c.codigo} value={c.codigo}>
                       {c.codigo} · {c.nombre}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
 
               <Field label="Origen de la actividad">
@@ -176,7 +174,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
 
               {modo === 'catalogo' ? (
                 <Field label="Actividad" required>
-                  <select aria-label="Actividad" value={codigoAnalisis} onChange={(e) => elegirActividad(e.target.value)}>
+                  <Select aria-label="Actividad" value={codigoAnalisis} onChange={(_, d) => elegirActividad(d.value)}>
                     <option value="">Elija una actividad…</option>
                     {[...grupos.entries()].map(([clave, lista]) => (
                       <optgroup key={clave} label={nombreGrupo(clave)}>
@@ -187,76 +185,77 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                         ))}
                       </optgroup>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               ) : (
-                <Field
-                  label="Código de la actividad nueva"
-                  hint="Opcional: si lo deja vacío se asigna uno (NUEVA-01, NUEVA-02…). Letras, números, punto, guion y guion bajo."
-                >
-                  <Input aria-label="Código de la actividad nueva" value={codigoNuevo} onChange={(_, d) => setCodigoNuevo(d.value)} />
-                </Field>
+                <>
+                  <Field
+                    label="Código de la actividad nueva"
+                    hint="Opcional: si lo deja vacío se asigna uno (NUEVA-01, NUEVA-02…). Letras, números, punto, guion y guion bajo."
+                  >
+                    <Input aria-label="Código de la actividad nueva" value={codigoNuevo} onChange={(_, d) => setCodigoNuevo(d.value)} />
+                  </Field>
+                  <MessageBar intent="warning">
+                    <MessageBarBody>
+                      La actividad nueva nace <b>sin insumos</b>, con precio $ 0, y solo existe en este presupuesto. Seleccione el ítem y use
+                      «Editar APU» para agregarle sus insumos.
+                    </MessageBarBody>
+                  </MessageBar>
+                </>
               )}
 
               <Field label="Descripción" required>
                 <Input value={descripcion} onChange={(_, d) => setDescripcion(d.value)} />
               </Field>
 
-              <Field
-                label="Unidad"
-                required
-                hint={modo === 'catalogo' ? 'Elíjala de la lista; al escoger una actividad del catálogo se propone la suya.' : 'Elíjala de la lista (por ejemplo m2, m3, kg, und, gl).'}
-              >
-                <select aria-label="Unidad" value={unidad} onChange={(e) => setUnidad(e.target.value)}>
-                  <option value="">Elija una unidad…</option>
-                  {unidadesConActual(unidad).map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <div className="dlg-dos-columnas">
+                <Field label="Unidad" required hint={modo === 'catalogo' ? 'Se propone la de la actividad.' : 'Por ejemplo m2, m3, kg, und.'}>
+                  <Select aria-label="Unidad" value={unidad} onChange={(_, d) => setUnidad(d.value)}>
+                    <option value="">Elija una unidad…</option>
+                    {unidadesConActual(unidad).map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
-              {modo === 'nueva' && (
-                <MessageBar intent="warning">
-                  <MessageBarBody>
-                    La actividad nueva nace <b>sin insumos</b>, con precio $ 0, y solo existe en este presupuesto. Seleccione el ítem y use
-                    «Editar APU» para agregarle sus insumos.
-                  </MessageBarBody>
-                </MessageBar>
-              )}
-
-              <Field
-                label="Cantidad"
-                validationState={cantidadValida ? 'none' : 'error'}
-                validationMessage={cantidadValida ? undefined : 'Escriba un número que no sea negativo.'}
-                hint="Opcional. Escríbala aquí, o use «Medir cantidad»: agrega el ítem y abre el generador para medirla y guardar las medidas."
-              >
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Field
+                  label="Cantidad (opcional)"
+                  validationState={cantidadValida ? 'none' : 'error'}
+                  validationMessage={cantidadValida ? undefined : 'Escriba un número que no sea negativo.'}
+                  hint="Escríbala o mídala con el botón."
+                >
                   <Input
-                    style={{ flex: 1 }}
                     aria-label="Cantidad"
                     inputMode="decimal"
+                    placeholder="0"
                     value={cantidadTexto}
                     onChange={(_, d) => setCantidadTexto(d.value)}
+                    contentAfter={
+                      <Button
+                        type="button"
+                        size="small"
+                        appearance="subtle"
+                        icon={<IconoMedir />}
+                        aria-label="Medir cantidad"
+                        disabled={!valido || enviando}
+                        title={motivoNoValido ?? 'Agrega el ítem y abre el generador de cantidades para medirlo y guardar las medidas'}
+                        onClick={() => void confirmar(true)}
+                      >
+                        Medir
+                      </Button>
+                    }
                   />
-                  <Button
-                    type="button"
-                    icon={<IconoMedir />}
-                    disabled={!valido || enviando}
-                    title={motivoNoValido ?? 'Agrega el ítem y abre el generador de cantidades para medirlo y guardar las medidas'}
-                    onClick={() => void confirmar(true)}
-                  >
-                    Medir cantidad
-                  </Button>
+                </Field>
+              </div>
+
+              {motivoNoValido && (
+                <div role="status" className="dlg-aviso">
+                  {motivoNoValido}
                 </div>
-              </Field>
+              )}
             </DialogContent>
-            {motivoNoValido && (
-              <p role="status" style={{ margin: '8px 0 0', fontSize: 12 }}>
-                {motivoNoValido}
-              </p>
-            )}
             <DialogActions>
               <Button appearance="secondary" onClick={onCerrar} disabled={enviando}>
                 Cancelar
