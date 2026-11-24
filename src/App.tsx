@@ -1045,9 +1045,14 @@ function AplicacionPresupuestos() {
             presupuesto={presupuesto}
             capituloInicial={capituloActivo}
             onCerrar={() => setItemAbierto(false)}
-            onCreado={(actualizado) => {
+            onCreado={(actualizado, medir) => {
               setPresupuesto(actualizado)
               setAviso(null)
+              if (medir) {
+                // Se agregó con «Medir cantidad»: se selecciona el ítem nuevo y se abre su generador.
+                setItemSel(medir.codigoItem)
+                setMedidorAbierto(true)
+              }
             }}
           />
         )}

@@ -17,12 +17,14 @@ import {
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
 import { aNumero } from './pegadoFilas'
+import { IconoMedir } from './CostosDirectos'
 
 interface Props {
   presupuesto: Presupuesto
   capituloInicial: string | null
   onCerrar: () => void
-  onCreado: (presupuesto: Presupuesto) => void
+  /** Tras crear el ítem. Con «Medir», trae el código del ítem nuevo para abrir su generador de cantidades. */
+  onCreado: (presupuesto: Presupuesto, medir?: { codigoItem: string }) => void
 }
 
 /**
@@ -79,7 +81,7 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     descripcion.trim() !== '' &&
     (modo === 'catalogo' ? codigoAnalisis !== '' : unidad.trim() !== '')
 
-  async function confirmar() {
+  async function confirmar(medir = false) {
     if (!valido) return
     setEnviando(true)
     setError(null)
@@ -97,7 +99,10 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
               nuevaActividad: { codigo: codigoNuevo.trim() || null, descripcion: descripcion.trim(), unidad: unidad.trim() },
             },
       )
-      onCreado(actualizado)
+      // El ítem nuevo es el único código que antes no estaba: con «Medir» se abre su generador de cantidades.
+      const antes = new Set(presupuesto.capitulos.flatMap((c) => c.items.map((i) => i.codigo)))
+      const nuevo = actualizado.capitulos.flatMap((c) => c.items).find((i) => !antes.has(i.codigo))
+      onCreado(actualizado, medir && nuevo ? { codigoItem: nuevo.codigo } : undefined)
       onCerrar()
     } catch (ex) {
       setError(ex instanceof Error ? ex.message : 'La API no pudo agregar el ítem.')
@@ -202,9 +207,26 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
                 label="Cantidad"
                 validationState={cantidadValida ? 'none' : 'error'}
                 validationMessage={cantidadValida ? undefined : 'Escriba un número que no sea negativo.'}
-                hint="Opcional. Escríbala aquí, o déjela vacía y mídala después con la regla del ítem en la tabla (generador de cantidades)."
+                hint="Opcional. Escríbala aquí, o use «Medir cantidad»: agrega el ítem y abre el generador para medirla y guardar las medidas."
               >
-                <Input aria-label="Cantidad" inputMode="decimal" value={cantidadTexto} onChange={(_, d) => setCantidadTexto(d.value)} />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Input
+                    style={{ flex: 1 }}
+                    aria-label="Cantidad"
+                    inputMode="decimal"
+                    value={cantidadTexto}
+                    onChange={(_, d) => setCantidadTexto(d.value)}
+                  />
+                  <Button
+                    type="button"
+                    icon={<IconoMedir />}
+                    disabled={!valido || enviando}
+                    title="Agrega el ítem y abre el generador de cantidades para medirlo y guardar las medidas"
+                    onClick={() => void confirmar(true)}
+                  >
+                    Medir cantidad
+                  </Button>
+                </div>
               </Field>
             </DialogContent>
             <DialogActions>
