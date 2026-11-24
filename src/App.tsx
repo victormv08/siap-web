@@ -938,7 +938,12 @@ function AplicacionPresupuestos() {
                 </>
               )}
               {hoja === 'cant' && presupuesto && (
-                <Cantidades presupuesto={presupuesto} onAbrirMedidor={(codigo) => abrirMedidor(codigo)} conMemoria={conMemoria} />
+                <Cantidades
+                  presupuesto={presupuesto}
+                  onAbrirMedidor={(codigo) => abrirMedidor(codigo)}
+                  conMemoria={conMemoria}
+                  onCambiarCantidad={cambiarCantidad}
+                />
               )}
               {hoja === 'res' && presupuesto && <ResumenDesagregadoVista key={`res-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}
               {hoja === 'form' && presupuesto && <FormularioPreciosVista key={`form-${presupuesto.id}-${presupuesto.total}`} presupuestoId={presupuesto.id} />}

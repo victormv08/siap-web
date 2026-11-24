@@ -438,7 +438,7 @@ describe('Medir cantidades desde las hojas', () => {
     await usuario.click(screen.getByRole('button', { name: 'Medir cantidades de Acero de refuerzo para zapatas' }))
 
     expect(alAbrir).toHaveBeenCalledWith('1.02')
-    expect(screen.getByText(/Pulse «Medir»/)).toBeInTheDocument()
+    expect(screen.getByText(/pulse «Medir» para abrir el generador/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^Medir cantidades de/ })).toHaveLength(2)
   })
 })

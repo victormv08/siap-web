@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react'
 import type { CapituloResultado, ItemResultado, Presupuesto } from '../api/cliente'
-import { decimales, pesos } from '../formato'
-import { aNumero } from './pegadoFilas'
+import { pesos } from '../formato'
+import { CeldaCantidad } from './CeldaCantidad'
 
 interface Props {
   presupuesto: Presupuesto
@@ -130,28 +129,6 @@ interface FilaProps {
 }
 
 function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, desdeMemoria, onCambiarCantidad, bloqueado }: FilaProps) {
-  const valorMostrado = decimales(item.cantidad)
-  // Mientras la persona escribe, la celda guarda su borrador; null = se muestra el valor guardado.
-  const [borrador, setBorrador] = useState<string | null>(null)
-  // Escape cancela: el blur que viene después no debe guardar el borrador.
-  const cancelado = useRef(false)
-  // Con memoria, la cantidad es el total de sus medidas: no se escribe a mano (hay que editar la memoria).
-  const editable = !desdeMemoria && onCambiarCantidad !== undefined
-
-  async function confirmar() {
-    if (cancelado.current) {
-      cancelado.current = false
-      setBorrador(null)
-      return
-    }
-    if (borrador === null || !onCambiarCantidad) return
-    const texto = borrador
-    setBorrador(null)
-    const numero = aNumero(texto)
-    if (numero === null || numero < 0 || numero === item.cantidad) return
-    await onCambiarCantidad(numero)
-  }
-
   const clases = [item.excluido ? 'excl' : '', seleccionado ? 'seleccionada' : ''].filter(Boolean).join(' ')
 
   return (
@@ -168,55 +145,14 @@ function FilaItem({ codigo, item, seleccionado, onSeleccionar, onAbrirMedidor, d
       </td>
       <td>{item.unidad}</td>
       <td className={desdeMemoria ? 'n con-memoria' : 'n'}>
-        {/* Dos formas de poner la cantidad: escribirla aquí (si no tiene memoria) o medirla en el generador y guardar las medidas. */}
-        {editable ? (
-          <input
-            aria-label={`Cantidad del ítem ${item.codigo}`}
-            inputMode="decimal"
-            value={borrador ?? valorMostrado}
-            disabled={bloqueado || item.excluido}
-            title="Escriba la cantidad, o use la regla para medirla en el generador"
-            onClick={(evento) => evento.stopPropagation()}
-            onDoubleClick={(evento) => evento.stopPropagation()}
-            onFocus={(evento) => {
-              onSeleccionar()
-              evento.currentTarget.select()
-            }}
-            onChange={(evento) => setBorrador(evento.target.value)}
-            onBlur={() => void confirmar()}
-            onKeyDown={(evento) => {
-              if (evento.key === 'Enter') {
-                evento.preventDefault()
-                evento.currentTarget.blur()
-              } else if (evento.key === 'Escape') {
-                cancelado.current = true
-                evento.currentTarget.blur()
-              }
-            }}
-          />
-        ) : (
-          <input
-            aria-label={`Cantidad del ítem ${item.codigo}`}
-            value={valorMostrado}
-            readOnly
-            disabled={bloqueado || item.excluido}
-            title="La cantidad sale de la memoria de cálculo: toque para abrir el generador y cambiar las medidas"
-            style={{ cursor: 'pointer' }}
-            onClick={(evento) => {
-              evento.stopPropagation()
-              onSeleccionar()
-              onAbrirMedidor()
-            }}
-            onDoubleClick={(evento) => evento.stopPropagation()}
-            onKeyDown={(evento) => {
-              if (evento.key === 'Enter' || evento.key === ' ') {
-                evento.preventDefault()
-                onSeleccionar()
-                onAbrirMedidor()
-              }
-            }}
-          />
-        )}
+        <CeldaCantidad
+          item={item}
+          desdeMemoria={desdeMemoria}
+          bloqueado={bloqueado}
+          onSeleccionar={onSeleccionar}
+          onAbrirMedidor={onAbrirMedidor}
+          onCambiarCantidad={onCambiarCantidad}
+        />
         <button
           type="button"
           className="btn-medir"
