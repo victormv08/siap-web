@@ -72,4 +72,31 @@ describe('Agregar ítem y medir su cantidad', { timeout: 15_000 }, () => {
     expect(within(dialogo).queryByRole('status')).not.toBeInTheDocument()
     expect(within(dialogo).getByRole('button', { name: 'Medir cantidad' })).toBeEnabled()
   })
+
+  it('la unidad se elige de una lista: la actividad del catálogo propone la suya y sin unidad no se puede agregar', async () => {
+    instalarApi({
+      manejador: (url) => {
+        if (url === '/api/catalogo/capitulos') return json([])
+        if (url === '/api/catalogo/actividades')
+          return json([{ codigo: 'MAM-01', capitulo: '', descripcion: 'Mampostería en bloque', unidad: 'm2', precioUnitario: 133305 }])
+        return undefined
+      },
+    })
+    const usuario = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('table', { name: 'Ítems del presupuesto' })
+    await usuario.click(screen.getByRole('button', { name: 'Ítem' }))
+    const dialogo = await screen.findByRole('dialog', { name: 'Agregar ítem' })
+    const unidad = within(dialogo).getByLabelText('Unidad')
+    expect(unidad.tagName).toBe('SELECT')
+
+    await waitFor(() => expect(within(dialogo).getByRole('option', { name: /MAM-01/ })).toBeInTheDocument())
+    await usuario.selectOptions(within(dialogo).getByLabelText('Actividad'), 'MAM-01')
+    expect(unidad).toHaveValue('m2')
+    expect(within(dialogo).getByRole('button', { name: 'Agregar ítem' })).toBeEnabled()
+
+    await usuario.selectOptions(unidad, '')
+    expect(within(dialogo).getByRole('button', { name: 'Agregar ítem' })).toBeDisabled()
+    expect(within(dialogo).getByRole('status')).toHaveTextContent('Elija la unidad')
+  })
 })

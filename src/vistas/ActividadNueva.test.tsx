@@ -64,7 +64,7 @@ describe('Agregar ítem con una actividad nueva', { timeout: 15_000 }, () => {
     await usuario.type(within(dialogo).getByLabelText(/Descripción/), 'Pintura de muros')
     expect(agregar).toBeDisabled() // falta la unidad
 
-    await usuario.type(within(dialogo).getByLabelText(/Unidad/), 'm2')
+    await usuario.selectOptions(within(dialogo).getByLabelText('Unidad'), 'm2')
     expect(agregar).toBeEnabled()
   })
 
@@ -73,7 +73,7 @@ describe('Agregar ítem con una actividad nueva', { timeout: 15_000 }, () => {
     const { usuario, dialogo } = await abrirDialogo()
     await usuario.click(within(dialogo).getByRole('radio', { name: 'Actividad nueva' }))
     await usuario.type(within(dialogo).getByLabelText(/Descripción/), 'Pintura de muros')
-    await usuario.type(within(dialogo).getByLabelText(/Unidad/), 'm2')
+    await usuario.selectOptions(within(dialogo).getByLabelText('Unidad'), 'm2')
 
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 
@@ -94,7 +94,7 @@ describe('Agregar ítem con una actividad nueva', { timeout: 15_000 }, () => {
     await usuario.click(within(dialogo).getByRole('radio', { name: 'Actividad nueva' }))
     fireEvent.change(within(dialogo).getByLabelText('Código de la actividad nueva'), { target: { value: '  pin-01 ' } })
     await usuario.type(within(dialogo).getByLabelText(/Descripción/), 'Pintura')
-    await usuario.type(within(dialogo).getByLabelText(/Unidad/), 'm2')
+    await usuario.selectOptions(within(dialogo).getByLabelText('Unidad'), 'm2')
 
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 
@@ -112,7 +112,7 @@ describe('Agregar ítem con una actividad nueva', { timeout: 15_000 }, () => {
     await usuario.click(within(dialogo).getByRole('radio', { name: 'Actividad nueva' }))
     await usuario.type(within(dialogo).getByLabelText('Código de la actividad nueva'), 'PIN-01')
     await usuario.type(within(dialogo).getByLabelText(/Descripción/), 'Pintura')
-    await usuario.type(within(dialogo).getByLabelText(/Unidad/), 'm2')
+    await usuario.selectOptions(within(dialogo).getByLabelText('Unidad'), 'm2')
 
     await usuario.click(within(dialogo).getByRole('button', { name: 'Agregar ítem' }))
 

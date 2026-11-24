@@ -18,6 +18,7 @@ import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo, Presupuesto } from '../api/cliente'
 import { aNumero } from './pegadoFilas'
 import { IconoMedir } from './CostosDirectos'
+import { unidadesConActual } from './unidades'
 
 interface Props {
   presupuesto: Presupuesto
@@ -83,8 +84,8 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
         ? 'Elija una actividad del catálogo para poder agregar o medir.'
         : descripcion.trim() === ''
           ? 'Escriba la descripción del ítem.'
-          : modo === 'nueva' && unidad.trim() === ''
-            ? 'Escriba la unidad de la actividad nueva.'
+          : unidad === ''
+            ? 'Elija la unidad de la lista.'
             : !cantidadValida
               ? 'La cantidad debe ser un número que no sea negativo.'
               : null
@@ -93,7 +94,8 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
     cantidadValida &&
     capituloDestino !== '' &&
     descripcion.trim() !== '' &&
-    (modo === 'catalogo' ? codigoAnalisis !== '' : unidad.trim() !== '')
+    (modo === 'catalogo' ? codigoAnalisis !== '' : true) &&
+    unidad !== ''
 
   async function confirmar(medir = false) {
     if (!valido) return
@@ -104,13 +106,13 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
         presupuesto.id,
         capituloDestino,
         modo === 'catalogo'
-          ? { descripcion: descripcion.trim(), unidad: unidad.trim() || null, cantidad: cantidad ?? 0, codigoAnalisis }
+          ? { descripcion: descripcion.trim(), unidad, cantidad: cantidad ?? 0, codigoAnalisis }
           : {
               descripcion: descripcion.trim(),
-              unidad: unidad.trim(),
+              unidad,
               cantidad: cantidad ?? 0,
               codigoAnalisis: '',
-              nuevaActividad: { codigo: codigoNuevo.trim() || null, descripcion: descripcion.trim(), unidad: unidad.trim() },
+              nuevaActividad: { codigo: codigoNuevo.trim() || null, descripcion: descripcion.trim(), unidad },
             },
       )
       // El ítem nuevo es el único código que antes no estaba: con «Medir» se abre su generador de cantidades.
@@ -202,10 +204,17 @@ export function DialogoItem({ presupuesto, capituloInicial, onCerrar, onCreado }
 
               <Field
                 label="Unidad"
-                required={modo === 'nueva'}
-                hint={modo === 'nueva' ? 'Por ejemplo: m2, m3, kg, und, gl.' : 'Si la deja vacía, se toma la de la actividad.'}
+                required
+                hint={modo === 'catalogo' ? 'Elíjala de la lista; al escoger una actividad del catálogo se propone la suya.' : 'Elíjala de la lista (por ejemplo m2, m3, kg, und, gl).'}
               >
-                <Input value={unidad} onChange={(_, d) => setUnidad(d.value)} />
+                <select aria-label="Unidad" value={unidad} onChange={(e) => setUnidad(e.target.value)}>
+                  <option value="">Elija una unidad…</option>
+                  {unidadesConActual(unidad).map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
               </Field>
 
               {modo === 'nueva' && (
