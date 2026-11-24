@@ -78,7 +78,7 @@ describe('Buscar ítem base', { timeout: 15_000 }, () => {
     api()
     const { usuario, dialogo } = await abrirBusqueda()
 
-    await usuario.click(within(dialogo).getByRole('button', { name: /Elegir MAM-01/ }))
+    await usuario.click(within(dialogo).getByRole('row', { name: /MAM-01/ }))
 
     const agregar = await screen.findByRole('dialog', { name: 'Agregar ítem' })
     await waitFor(() => expect(within(agregar).getByRole('row', { name: /MAM-01/ })).toHaveAttribute('aria-selected', 'true'))
@@ -100,5 +100,22 @@ describe('Buscar ítem base', { timeout: 15_000 }, () => {
 
     const agregar = await screen.findByRole('dialog', { name: 'Agregar ítem' })
     await waitFor(() => expect(within(agregar).getByRole('row', { name: /PIN-01/ })).toHaveAttribute('aria-selected', 'true'))
+  })
+
+  it('las flechas mueven la fila activa y Enter elige la marcada', async () => {
+    api()
+    const { usuario, dialogo } = await abrirBusqueda()
+    const filas = () => within(dialogo).getAllByRole('row').slice(1)
+    expect(filas()[0]).toHaveAttribute('aria-selected', 'true')
+
+    await usuario.click(within(dialogo).getByRole('textbox', { name: 'Buscar en la base de actividades' }))
+    await usuario.keyboard('{ArrowDown}{ArrowDown}')
+    expect(filas()[2]).toHaveAttribute('aria-selected', 'true')
+    await usuario.keyboard('{ArrowUp}')
+    expect(filas()[1]).toHaveAttribute('aria-selected', 'true')
+    await usuario.keyboard('{Enter}')
+
+    const agregar = await screen.findByRole('dialog', { name: 'Agregar ítem' })
+    await waitFor(() => expect(within(agregar).getByRole('row', { name: /CIM-01/ })).toHaveAttribute('aria-selected', 'true'))
   })
 })

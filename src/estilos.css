@@ -1948,7 +1948,7 @@ body {
 }
 
 /* ---------- Diálogo «Agregar ítem»: formulario en una cuadrícula, con campos de Fluent y avisos claros ---------- */
-.dlg-item {
+.fui-DialogSurface.dlg-item {
   width: min(900px, 94vw);
   max-width: none;
 }
@@ -2076,4 +2076,87 @@ table.g.medidor.acero {
   padding: 8px;
   font-size: 12px;
   opacity: 0.7;
+}
+
+/* ---------- «Buscar ítem base» (F4): buscador grande, tabla de Fluent con fila activa y encabezado fijo ---------- */
+.fui-DialogSurface.bib-superficie {
+  width: min(920px, 94vw);
+  max-width: none;
+}
+
+.bib-contenido {
+  display: grid;
+  gap: 10px;
+}
+
+.bib-ayuda {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.bib-lista {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--grid);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.bib-cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--head);
+}
+
+.bib-fila {
+  cursor: pointer;
+}
+
+.bib-fila.activa {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.bib-codigo {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bib-capitulo {
+  color: var(--text-2);
+}
+
+.bib-valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bib-lista table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.bib-vacio {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.bib-resumen {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.bib-acciones {
+  align-items: center;
+}
+
+.bib-atajos {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
 }

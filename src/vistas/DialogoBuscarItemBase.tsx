@@ -1,5 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Input, MessageBar, MessageBarBody, Spinner } from '@fluentui/react-components'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Input,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+} from '@fluentui/react-components'
 import { api } from '../api/cliente'
 import type { ActividadCatalogo, CapituloCatalogo } from '../api/cliente'
 import { pesos } from '../formato'
@@ -18,15 +36,27 @@ function normalizar(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
+function IconoLupa() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  )
+}
+
 /**
  * Busca una actividad de la base (el catálogo) por código, descripción, unidad o capítulo. Cada palabra escrita debe estar en
- * alguna parte del texto de la actividad. El precio lo calcula la API; aquí solo se filtra y se elige.
+ * alguna parte del texto de la actividad. Las flechas mueven la fila activa y Enter la elige. El precio lo calcula la API;
+ * aquí solo se filtra y se elige.
  */
 export function DialogoBuscarItemBase({ onCerrar, onElegir }: Props) {
   const [actividades, setActividades] = useState<ActividadCatalogo[] | null>(null)
   const [capitulos, setCapitulos] = useState<CapituloCatalogo[]>([])
   const [error, setError] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
+  const [activa, setActiva] = useState(0)
+  const listaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let vigente = true
@@ -51,21 +81,47 @@ export function DialogoBuscarItemBase({ onCerrar, onElegir }: Props) {
     const palabras = normalizar(texto).split(/\s+/).filter(Boolean)
     if (palabras.length === 0) return actividades
     return actividades.filter((a) => {
-      const pajar = normalizar(`${a.codigo} ${a.descripcion} ${a.unidad} ${a.capitulo ?? ''} ${nombreCapitulo(a.capitulo ?? '')}`)
+      const pajar = normalizar(`${a.codigo} ${a.descripcion} ${a.unidad} ${a.capitulo ?? ''} ${capitulos.find((c) => c.numero === a.capitulo)?.nombre ?? ''}`)
       return palabras.every((p) => pajar.includes(p))
     })
-    // nombreCapitulo depende de `capitulos`, que ya está en las dependencias por la lista de actividades.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actividades, capitulos, texto])
 
   const visibles = coincidencias.slice(0, MAXIMO)
+  const indiceActivo = Math.min(activa, Math.max(visibles.length - 1, 0))
+
+  // La fila activa siempre queda a la vista al moverse con las flechas.
+  useEffect(() => {
+    listaRef.current?.querySelector<HTMLElement>('[data-activa="true"]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [indiceActivo, texto])
+
+  function alTeclear(evento: React.KeyboardEvent) {
+    if (visibles.length === 0) return
+    if (evento.key === 'ArrowDown') {
+      evento.preventDefault()
+      setActiva(Math.min(indiceActivo + 1, visibles.length - 1))
+    } else if (evento.key === 'ArrowUp') {
+      evento.preventDefault()
+      setActiva(Math.max(indiceActivo - 1, 0))
+    } else if (evento.key === 'Enter') {
+      evento.preventDefault()
+      onElegir(visibles[indiceActivo])
+    }
+  }
+
+  const resumen =
+    coincidencias.length === 0
+      ? 'Ninguna actividad coincide. Pruebe con otra palabra.'
+      : coincidencias.length > MAXIMO
+        ? `Mostrando ${MAXIMO} de ${coincidencias.length} actividades. Escriba más palabras para afinar.`
+        : `${coincidencias.length} actividad${coincidencias.length === 1 ? '' : 'es'}`
 
   return (
     <Dialog open onOpenChange={(_, datos) => !datos.open && onCerrar()}>
-      <DialogSurface style={{ maxWidth: 760, width: '100%' }}>
+      <DialogSurface className="bib-superficie">
         <DialogBody>
           <DialogTitle>Buscar ítem base</DialogTitle>
-          <DialogContent style={{ display: 'grid', gap: 12 }}>
+          <DialogContent className="bib-contenido">
+            <p className="bib-ayuda">Elija una actividad de la base para agregarla al presupuesto.</p>
             {error && (
               <MessageBar intent="error">
                 <MessageBarBody>{error}</MessageBarBody>
@@ -73,60 +129,67 @@ export function DialogoBuscarItemBase({ onCerrar, onElegir }: Props) {
             )}
             <Input
               aria-label="Buscar en la base de actividades"
-              placeholder="Escriba código, descripción, unidad o capítulo…"
+              placeholder="Código, descripción, unidad o capítulo…"
+              size="large"
+              contentBefore={<IconoLupa />}
               value={texto}
-              onChange={(_, d) => setTexto(d.value)}
-              onKeyDown={(evento) => {
-                if (evento.key === 'Enter' && visibles.length > 0) {
-                  evento.preventDefault()
-                  onElegir(visibles[0])
-                }
+              onChange={(_, d) => {
+                setTexto(d.value)
+                setActiva(0)
               }}
+              onKeyDown={alTeclear}
               autoFocus
             />
             {actividades === null && !error ? (
               <Spinner label="Cargando la base de actividades…" />
             ) : (
               <>
-                <div style={{ maxHeight: 360, overflow: 'auto' }}>
-                  <table className="g" aria-label="Resultados de la búsqueda" style={{ width: '100%' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: 90 }}>Código</th>
-                        <th>Actividad</th>
-                        <th style={{ width: 70 }}>Unidad</th>
-                        <th style={{ width: 120 }} className="n">
-                          Vr. unitario
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibles.map((a) => (
-                        <tr key={a.codigo} className="fila-resultado" style={{ cursor: 'pointer' }} onClick={() => onElegir(a)}>
-                          <td>
-                            <button type="button" className="enlace-fila" aria-label={`Elegir ${a.codigo} · ${a.descripcion}`} onClick={() => onElegir(a)}>
-                              {a.codigo}
-                            </button>
-                          </td>
-                          <td className="desc">{a.descripcion}</td>
-                          <td>{a.unidad}</td>
-                          <td className="n">$ {pesos(a.precioUnitario)}</td>
-                        </tr>
+                <div className="bib-lista" ref={listaRef}>
+                  <Table size="small" aria-label="Resultados de la búsqueda" noNativeElements={false}>
+                    <TableHeader className="bib-cabecera">
+                      <TableRow>
+                        <TableHeaderCell style={{ width: 96 }}>Código</TableHeaderCell>
+                        <TableHeaderCell>Actividad</TableHeaderCell>
+                        <TableHeaderCell style={{ width: 190 }}>Capítulo</TableHeaderCell>
+                        <TableHeaderCell style={{ width: 70 }}>Unidad</TableHeaderCell>
+                        <TableHeaderCell style={{ width: 130, textAlign: 'right' }}>Vr. unitario</TableHeaderCell>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visibles.map((a, i) => (
+                        <TableRow
+                          key={a.codigo}
+                          className={i === indiceActivo ? 'bib-fila activa' : 'bib-fila'}
+                          data-activa={i === indiceActivo}
+                          aria-selected={i === indiceActivo}
+                          onClick={() => onElegir(a)}
+                          onMouseMove={() => i !== indiceActivo && setActiva(i)}
+                        >
+                          <TableCell className="bib-codigo">
+                            {a.codigo}
+                          </TableCell>
+                          <TableCell>{a.descripcion}</TableCell>
+                          <TableCell className="bib-capitulo">
+                            {a.capitulo ? `${a.capitulo} · ${nombreCapitulo(a.capitulo)}` : 'Demostración'}
+                          </TableCell>
+                          <TableCell>{a.unidad}</TableCell>
+                          <TableCell className="bib-valor">
+                            $ {pesos(a.precioUnitario)}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
+                  {visibles.length === 0 && <div className="bib-vacio">Sin actividades que coincidan.</div>}
                 </div>
-                <p role="status" style={{ margin: 0, fontSize: 12 }}>
-                  {coincidencias.length === 0
-                    ? 'Ninguna actividad coincide. Pruebe con otra palabra.'
-                    : coincidencias.length > MAXIMO
-                      ? `Mostrando ${MAXIMO} de ${coincidencias.length}. Escriba más palabras para afinar.`
-                      : `${coincidencias.length} actividad${coincidencias.length === 1 ? '' : 'es'}. Pulse Enter para elegir la primera.`}
+                <p role="status" className="bib-resumen">
+                  {resumen}
                 </p>
               </>
             )}
           </DialogContent>
-          <DialogActions>
+          <DialogActions className="bib-acciones">
+            <span className="bib-atajos">↑ ↓ moverse · Enter elegir · Esc cerrar</span>
             <Button appearance="secondary" onClick={onCerrar}>
               Cancelar
             </Button>
