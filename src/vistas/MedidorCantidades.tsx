@@ -712,7 +712,7 @@ function EncabezadoGenerico() {
       <th style={{ width: 52 }}>Nivel</th>
       <th style={{ width: 52 }}>Eje</th>
       <th style={{ width: 60 }}>Tramo</th>
-      <th style={{ width: 80 }}>Clasificador</th>
+      <th style={{ width: 100 }}>Clasificador</th>
       <th className="n" style={{ width: 64 }}>
         Largo
       </th>

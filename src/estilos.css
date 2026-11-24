@@ -1979,3 +1979,57 @@ body {
 .fila-resultado:hover {
   background: var(--accent-soft);
 }
+
+/* ---------- Generador de cantidades: rejilla tipo Excel (celdas con borde visible y columnas con su ancho exacto) ---------- */
+/* Con box-sizing de contenido el relleno de cada celda inflaba los anchos: «Observación» quedaba de ~60 px y se montaba
+   sobre «Nivel». Con border-box el ancho declarado es el real, y las columnas fijas (sticky) caen donde deben. */
+.g.medidor th,
+.g.medidor td {
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.g.medidor td {
+  border-right: 1px solid var(--grid);
+  border-bottom: 1px solid var(--grid);
+}
+
+/* Cada casilla se ve como una celda: borde propio, visible en tema claro y oscuro. */
+.g.medidor td input,
+.g.medidor td select {
+  border: 1px solid color-mix(in srgb, var(--text) 26%, var(--paper));
+  background: var(--input);
+}
+
+.g.medidor td input:hover,
+.g.medidor td select:hover {
+  border-color: color-mix(in srgb, var(--text) 45%, var(--paper));
+}
+
+.g.medidor td input:focus-visible,
+.g.medidor td select:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Las casillas bloqueadas (por ejemplo largo/ancho/alto cuando la fila usa una figura) se ven apagadas, sin borde. */
+.g.medidor td input:disabled,
+.g.medidor td select:disabled {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* La observación recibe lo que sobra y nunca baja de un ancho legible; si no cabe, la rejilla se desplaza. */
+table.g.medidor {
+  min-width: 1080px;
+}
+
+table.g.medidor.acero {
+  min-width: 980px;
+}
+
+.g.medidor th.fija-obs,
+.g.medidor td.fija-obs {
+  min-width: 160px;
+}
